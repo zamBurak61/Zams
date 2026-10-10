@@ -275,7 +275,7 @@ img{max-width:100%}
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" hidden><div class="handle"></div><div id="sheetBody"></div></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
 <script>
 (() => {
 'use strict';
@@ -325,7 +325,7 @@ const campusTxt = c => CAMPUS[c] ? `${CAMPUS[c].s} ${CAMPUS[c].n}` : '';
 const placeTxt = (loc, c) => [loc, campusTxt(c)].filter(Boolean).join(' ');
 
 // ---------- persistence (Supabase) ----------
-const SB_URL = '%%SUPABASE_URL%%', SB_KEY = '%%SUPABASE_ANON_KEY%%';
+const SB_URL = 'https://qskjkfldmdgjrugfduoh.supabase.co', SB_KEY = 'sb_publishable_TzaLuT26ZN9TLmE2naxnEw_kal5SnV7';
 let sb = null, USER = null, pending = 0;
 const CACHE_KEY = 'haftam.cache.v1';
 function errText(e){
