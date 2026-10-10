@@ -108,6 +108,12 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .t-meta .cat{display:inline-flex;align-items:center;gap:5px}
 .group-h{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:14px 0 6px;display:flex;gap:8px;align-items:center}
 .group-h.warn{color:var(--warn)}
+.group-h{width:100%;border:0;background:transparent;padding:4px 0;text-align:left;cursor:pointer}
+.group-h .chev{display:inline-block;width:12px;color:var(--muted)}
+.group-h .cnt{margin-left:auto;font-weight:500;color:var(--muted)}
+.todo.ev{background:color-mix(in srgb,var(--cc) 7%,var(--surface))}
+.evi{width:26px;height:26px;display:grid;place-items:center;color:var(--cc)}
+.evi svg{width:18px;height:18px}
 details.done-group summary{cursor:pointer;list-style:none}
 details.done-group summary::-webkit-details-marker{display:none}
 
@@ -254,9 +260,9 @@ img{max-width:100%}
 
   <section id="tab-todo" class="tab" hidden>
     <form id="todoForm" class="todo-form" autocomplete="off">
-      <input type="text" id="tfTitle" placeholder="Yeni iş" aria-label="İş adı">
+      <input type="text" id="tfTitle" placeholder="Yeni iş (tarih isteğe bağlı)" aria-label="İş adı">
       <select id="tfCat" aria-label="Kategori"></select>
-      <input type="date" id="tfDue" aria-label="Son tarih">
+      <input type="date" id="tfDue" aria-label="Tarih (isteğe bağlı)" title="Tarih (isteğe bağlı)">
       <select id="tfDur" aria-label="Tahmini süre"></select>
       <button class="btn primary" type="submit">Ekle</button>
     </form>
@@ -267,8 +273,8 @@ img{max-width:100%}
 
 <nav class="tabbar" id="tabbar" hidden><div class="in" role="tablist">
   <button role="tab" data-tab="today" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Bugün</button>
-  <button role="tab" data-tab="week" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M9 10v10M15 10v10M8 3v4M16 3v4"/></svg>Hafta</button>
-  <button role="tab" data-tab="todo" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7l2 2 3-3M4 15l2 2 3-3M12 8h8M12 16h8"/></svg><span>Yapılacaklar<span class="badge" id="missedBadge" hidden></span></span></button>
+  <button role="tab" data-tab="todo" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6.5l1.8 1.8L8.5 5.5M4 13.5l1.8 1.8 2.7-2.8M11.5 7h8.5M11.5 14h8.5M4 19.5h16"/></svg><span>Planlananlar<span class="badge" id="missedBadge" hidden></span></span></button>
+  <button role="tab" data-tab="week" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M9 10v10M15 10v10M8 3v4M16 3v4"/></svg>Takvim</button>
 </div></nav>
 
 <div class="sheet-bg" id="sheetBg" hidden></div>
@@ -315,9 +321,9 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID().replace(/-/g,'').slic
 // ---------- state ----------
 const S = { cats:[], templates:[], overrides:{}, events:[], todos:[], mode:'connecting',
   loaded:{meta:false,templates:false,overrides:false,events:false,todos:false},
-  tab:'today', weekOffset:0, filter:'all' };
+  tab:'today', weekOffset:0, filter:'all', collapsed:new Set(['done']) };
 let DB = null, ROOT = null;
-try { const t = localStorage.getItem('haftam.tab'); if (t) S.tab = t; } catch {}
+try { const t = localStorage.getItem('haftam.tab'); if (t) S.tab = t; const c = JSON.parse(localStorage.getItem('zams.collapsed') || 'null'); if (Array.isArray(c)) S.collapsed = new Set(c); } catch {}
 
 const catOf = id => S.cats.find(c => c.id === id) || {id:'', name:'Kategorisiz', color:'c8'};
 const ccVar = id => `--cc:var(--${catOf(id).color})`;
@@ -495,7 +501,7 @@ function render(){ if (!raf) raf = requestAnimationFrame(() => { raf = 0; draw()
 function draw(){
   const now = new Date();
   $('#hdrDate').textContent = `${DAYS[dow(now)]}, ${now.getDate()} ${MONTHS[now.getMonth()]}`;
-  $('#hdrTitle').textContent = {today:'Bugün', week:'Hafta', todo:'Yapılacaklar'}[S.tab];
+  $('#hdrTitle').textContent = {today:'Bugün', week:'Takvim', todo:'Planlananlar'}[S.tab];
   document.querySelectorAll('.tabbar button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === S.tab)));
   ['today','week','todo'].forEach(t => $('#tab-'+t).hidden = t !== S.tab);
   const st = $('#status');
@@ -542,7 +548,7 @@ function drawToday(){
   $('#nowCard').innerHTML = card;
   $('#todayFree').textContent = loading() ? '' : `kalan boş zaman ${durTxt(freeMinutes(ds, nm))}`;
   const ag = $('#agenda');
-  if (!loading() && !items.length) ag.innerHTML = `<li class="empty">Bugün takviminde bir şey yok. Hafta ekranında boş bir yere dokunarak etkinlik ekleyebilirsin.</li>`;
+  if (!loading() && !items.length) ag.innerHTML = `<li class="empty">Bugün takviminde bir şey yok. Takvim ekranında boş bir yere dokunarak etkinlik ekleyebilirsin.</li>`;
   else ag.innerHTML = items.map((x,i) => {
     const past = toMin(x.end) <= nm, isLive = x === cur;
     const tags = [];
@@ -604,24 +610,61 @@ function drawTodos(){
   const chips = [{id:'all', name:'Tümü'}, ...S.cats, {id:'', name:'Kategorisiz'}];
   fc.innerHTML = chips.map(c => `<button class="chip" data-f="${esc(c.id)}" aria-pressed="${S.filter===c.id}" style="${c.id!=='all'?ccVar(c.id):''}">${c.id!=='all'?'<i class="dot"></i>':''}${esc(c.name)}</button>`).join('');
   fc.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { S.filter = b.dataset.f; render(); });
-  const list = S.todos.filter(t => S.filter === 'all' || (t.cat||'') === S.filter || (S.filter==='' && !S.cats.some(c=>c.id===t.cat)));
-  const g = {missed:[], open:[], planned:[], done:[]};
-  list.forEach(t => g[todoState(t)].push(t));
-  Object.values(g).forEach(a => a.sort(todoSort));
-  g.done.sort((a,b) => (b.doneAt||0)-(a.doneAt||0));
-  let html = '';
-  if (loading()) html = '';
-  else if (!S.todos.length) html = `<div class="empty">Henüz iş yok. Yukarıdan bir iş ekle; süresini girersen takvimde sığacağı boşlukları önereyim.</div>`;
-  else {
-    if (g.missed.length) html += `<div class="group-h warn">Kaçanlar · yeniden planla <span class="mono">${g.missed.length}</span></div><ul class="todo-list">${g.missed.map(todoRow).join('')}</ul>`;
-    html += `<div class="group-h">Planlanmadı <span class="mono">${g.open.length}</span></div>` + (g.open.length ? `<ul class="todo-list">${g.open.map(todoRow).join('')}</ul>` : `<div class="empty">Planlanmayı bekleyen iş yok.</div>`);
-    if (g.planned.length) html += `<div class="group-h">Takvimde <span class="mono">${g.planned.length}</span></div><ul class="todo-list">${g.planned.map(todoRow).join('')}</ul>`;
-    if (g.done.length) html += `<details class="done-group" id="doneGroup"><summary class="group-h">Tamamlanan <span class="mono">${g.done.length}</span> ▾</summary><ul class="todo-list">${g.done.slice(0,40).map(todoRow).join('')}</ul></details>`;
+  const inFilter = x => S.filter === 'all' || (x.cat||'') === S.filter || (S.filter==='' && !S.cats.some(c=>c.id===x.cat));
+  const td = todayStr(), now = new Date();
+  const tm = ymd(addDays(now,1)), d2 = ymd(addDays(now,2));
+  const wEnd = ymd(addDays(weekStart(now),6));
+  const nwStart = ymd(addDays(weekStart(now),7)), nwEnd = ymd(addDays(weekStart(now),13));
+  const range = (a,b) => { const x = parseYmd(a), y = parseYmd(b); return `${x.getDate()} ${MSHORT[x.getMonth()]} ${DSHORT[dow(x)]} – ${y.getDate()} ${MSHORT[y.getMonth()]} ${DSHORT[dow(y)]}`; };
+  const G = [
+    {k:'missed', t:'Kaçanlar · yeniden planla', warn:true, items:[]},
+    {k:'late', t:'Gecikmiş', warn:true, items:[]},
+    {k:'today', t:'Bugün', items:[]},
+    {k:'tom', t:'Yarın', items:[]},
+    {k:'week', t: d2 <= wEnd ? (d2 === wEnd ? 'Bu hafta · ' + dayLabel(d2) : 'Bu hafta · ' + range(d2, wEnd)) : 'Bu hafta', items:[]},
+    {k:'next', t:'Gelecek hafta · ' + range(nwStart, nwEnd), items:[]},
+    {k:'later', t:'Sonra', items:[]},
+    {k:'none', t:'Tarihsiz', items:[]},
+    {k:'done', t:'Tamamlanan', items:[]}
+  ];
+  const byK = Object.fromEntries(G.map(g => [g.k, g]));
+  const slot = ds => ds < td ? 'late' : ds === td ? 'today' : ds === tm ? 'tom' : ds <= wEnd ? 'week' : ds <= nwEnd ? 'next' : 'later';
+  for (const t of S.todos.filter(inFilter)){
+    const st = todoState(t);
+    if (st === 'done'){ byK.done.items.push({type:'todo', ref:t, key:-(t.doneAt||0)}); continue; }
+    if (st === 'missed'){ byK.missed.items.push({type:'todo', ref:t, key:t.sched.date+t.sched.start}); continue; }
+    const ds = t.sched ? t.sched.date : t.due;
+    if (!ds){ byK.none.items.push({type:'todo', ref:t, key:String(t.created||0).padStart(15,'0')}); continue; }
+    byK[slot(ds)].items.push({type:'todo', ref:t, key: t.sched ? ds+t.sched.start : ds+'~'});
   }
-  const open = $('#doneGroup')?.open;
-  $('#todoGroups').innerHTML = html;
-  if (open && $('#doneGroup')) $('#doneGroup').open = true;
-  bindTodoRows($('#todoGroups'));
+  for (const ev of S.events.filter(inFilter)){
+    if (ev.date < td) continue;
+    byK[slot(ev.date)].items.push({type:'ev', ref:ev, key:ev.date+ev.start});
+  }
+  G.forEach(g => g.items.sort((a,b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  let html = '';
+  const total = G.reduce((n,g) => n + g.items.length, 0);
+  if (loading()) html = '';
+  else if (!total) html = `<div class="empty">${S.filter==='all' ? 'Henüz plan yok. Yukarıdan bir iş ekle; tarih verirsen ilgili güne, vermezsen Tarihsiz grubuna düşer.' : 'Bu kategoride bir şey yok.'}</div>`;
+  else for (const g of G){
+    if (!g.items.length) continue;
+    const open = !S.collapsed.has(g.k);
+    html += `<button class="group-h${g.warn?' warn':''}" data-g="${g.k}" aria-expanded="${open}"><span class="chev">${open?'▾':'▸'}</span>${esc(g.t)} <span class="mono cnt">${g.items.length}</span></button>`;
+    if (open) html += `<ul class="todo-list">${g.items.slice(0, g.k==='done'?40:500).map(it => it.type==='ev' ? eventRow(it.ref) : todoRow(it.ref)).join('')}</ul>`;
+  }
+  const box = $('#todoGroups'); box.innerHTML = html;
+  box.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
+    const k = b.dataset.g; if (S.collapsed.has(k)) S.collapsed.delete(k); else S.collapsed.add(k);
+    try { localStorage.setItem('zams.collapsed', JSON.stringify([...S.collapsed])); } catch {}
+    render();
+  });
+  box.querySelectorAll('[data-ev]').forEach(b => b.onclick = () => { const ev = S.events.find(e => e.id === b.dataset.ev); if (ev) openEvent(ev); });
+  bindTodoRows(box);
+}
+function eventRow(ev){
+  const place = placeTxt(ev.location, ev.campus);
+  return `<li class="todo ev" style="${ccVar(ev.cat)}"><span class="evi" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5.5" width="16" height="14" rx="2"/><path d="M4 10h16M9 3.5v4M15 3.5v4"/></svg></span>
+    <div class="t-main" data-ev="${ev.id}"><div class="t-title">${esc(ev.title)}</div><div class="t-meta"><span class="cat"><i class="dot"></i>${esc(catOf(ev.cat).name)}</span><span class="tag">${esc(dayLabel(ev.date))} ${ev.start}–${ev.end}</span>${place?`<span class="mono">${esc(place)}</span>`:''}</div></div><span></span></li>`;
 }
 
 let lastWeekScrolled = null;
@@ -801,7 +844,7 @@ function openNew(date, time){
   openSheet(`<div class="sh-head"><h3>${DAYS[dow(d)]} ${d.getDate()} ${MSHORT[d.getMonth()]} · <span class="mono">${time}</span></h3><button class="btn small ghost" data-close>Kapat</button></div>
     <div class="seg"><button id="sgEv" aria-pressed="true">Etkinlik ekle</button><button id="sgTd" aria-pressed="false">İş yerleştir${cands.length?` (${cands.length})`:''}</button></div>
     <div id="pnEv">${eventForm({title:'', date, start:time, end, location:'', campus:'', cat:S.cats[0]?.id||'', note:''}, true)}</div>
-    <div id="pnTd" hidden>${cands.length ? `<ul class="pick-list">${cands.map(t => `<li><button data-pick="${t.id}" style="${ccVar(t.cat)}"><i class="dot"></i><span style="flex:1;min-width:0"><b>${esc(t.title)}</b><br><small class="muted">${esc(catOf(t.cat).name)} · ${durTxt(t.dur||60)}${toMin(time)+(t.dur||60) > busyEnd(date,time) ? ' · <span style="color:var(--warn)">bir sonraki etkinliğe taşıyor</span>':''}</small></span><span class="mono">${time}</span></button></li>`).join('')}</ul>` : '<div class="empty">Yerleştirilecek iş yok. Yapılacaklar ekranından ekleyebilirsin.</div>'}</div>`, root => {
+    <div id="pnTd" hidden>${cands.length ? `<ul class="pick-list">${cands.map(t => `<li><button data-pick="${t.id}" style="${ccVar(t.cat)}"><i class="dot"></i><span style="flex:1;min-width:0"><b>${esc(t.title)}</b><br><small class="muted">${esc(catOf(t.cat).name)} · ${durTxt(t.dur||60)}${toMin(time)+(t.dur||60) > busyEnd(date,time) ? ' · <span style="color:var(--warn)">bir sonraki etkinliğe taşıyor</span>':''}</small></span><span class="mono">${time}</span></button></li>`).join('')}</ul>` : '<div class="empty">Yerleştirilecek iş yok. Planlananlar ekranından ekleyebilirsin.</div>'}</div>`, root => {
     bindEventForm(root, uid(), true);
     const ev = root.querySelector('#sgEv'), td = root.querySelector('#sgTd');
     ev.onclick = () => { ev.setAttribute('aria-pressed','true'); td.setAttribute('aria-pressed','false'); root.querySelector('#pnEv').hidden = false; root.querySelector('#pnTd').hidden = true; };
