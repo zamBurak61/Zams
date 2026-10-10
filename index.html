@@ -44,7 +44,7 @@ button{cursor:pointer}
 .muted{color:var(--muted)}
 h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
 
-.app{max-width:980px;margin:0 auto;padding-inline:16px;padding-block:0 96px}
+.app{max-width:980px;margin:0 auto;padding-inline:16px;padding-block:0 150px}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-block:14px 10px}
 .top .date{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .top h1{font-size:28px;font-weight:700;line-height:1.1}
@@ -114,6 +114,12 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .todo.ev{background:color-mix(in srgb,var(--cc) 7%,var(--surface))}
 .evi{width:26px;height:26px;display:grid;place-items:center;color:var(--cc)}
 .evi svg{width:18px;height:18px}
+.fab{position:fixed;right:16px;bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:35;width:58px;height:58px;border-radius:18px;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;box-shadow:0 8px 22px color-mix(in srgb,var(--accent) 38%,transparent)}
+.fab svg{width:28px;height:28px}
+.fld{display:flex;flex-direction:column;gap:6px;min-width:0}
+.fld .lbl{font-size:12px;font-weight:600;color:var(--muted)}
+.chips.wrap{flex-wrap:wrap;overflow:visible}
+.where{font-size:13px;margin:4px 0 0;padding:8px 10px;border-radius:8px;background:var(--sunk)}
 details.done-group summary{cursor:pointer;list-style:none}
 details.done-group summary::-webkit-details-marker{display:none}
 
@@ -175,7 +181,7 @@ details.done-group summary::-webkit-details-marker{display:none}
 .sh-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
 .form label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted);min-width:0}
-.form label.full{grid-column:1/-1}
+.form .full{grid-column:1/-1}
 .form input,.form select{width:100%}
 .seg{display:flex;background:var(--sunk);border-radius:10px;padding:3px;gap:3px;margin-bottom:10px}
 .seg button{flex:1;border:0;background:transparent;border-radius:8px;padding:8px;font-weight:600;font-size:14px;color:var(--muted)}
@@ -189,8 +195,8 @@ details.done-group summary::-webkit-details-marker{display:none}
 .tpl-row{display:grid;grid-template-columns:auto 92px 1fr;gap:10px;align-items:center;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:transparent;padding:9px 2px}
 .tpl-row .mono{font-size:12px;color:var(--muted)}
 
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;max-width:calc(100% - 32px)}
-@media (min-width:760px){.app{padding-block:0 100px}.top h1{font-size:32px}}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;max-width:calc(100% - 32px)}
+@media (min-width:760px){.app{padding-block:0 150px}.top h1{font-size:32px}}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}}
 
 html{padding-top:env(safe-area-inset-top,0px)}
@@ -238,11 +244,6 @@ img{max-width:100%}
     <div class="sec-h"><h2>Program</h2><span id="todayFree" class="muted mono"></span></div>
     <ol id="agenda" class="agenda"></ol>
     <div class="sec-h"><h2>Bugünün işleri</h2></div>
-    <form id="quickAdd" class="quick" autocomplete="off">
-      <input type="text" id="qaTitle" placeholder="Bugün için iş ekle" aria-label="İş adı">
-      <select id="qaCat" aria-label="Kategori"></select>
-      <button class="btn primary" type="submit">Ekle</button>
-    </form>
     <ul id="todayTodos" class="todo-list"></ul>
   </section>
 
@@ -259,18 +260,12 @@ img{max-width:100%}
   </section>
 
   <section id="tab-todo" class="tab" hidden>
-    <form id="todoForm" class="todo-form" autocomplete="off">
-      <input type="text" id="tfTitle" placeholder="Yeni iş (tarih isteğe bağlı)" aria-label="İş adı">
-      <select id="tfCat" aria-label="Kategori"></select>
-      <input type="date" id="tfDue" aria-label="Tarih (isteğe bağlı)" title="Tarih (isteğe bağlı)">
-      <select id="tfDur" aria-label="Tahmini süre"></select>
-      <button class="btn primary" type="submit">Ekle</button>
-    </form>
     <div class="chips" id="catFilter"></div>
     <div id="todoGroups"></div>
   </section>
 </div>
 
+<button class="fab" id="fab" aria-label="Yeni iş ekle" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
 <nav class="tabbar" id="tabbar" hidden><div class="in" role="tablist">
   <button role="tab" data-tab="today" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Bugün</button>
   <button role="tab" data-tab="todo" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6.5l1.8 1.8L8.5 5.5M4 13.5l1.8 1.8 2.7-2.8M11.5 7h8.5M11.5 14h8.5M4 19.5h16"/></svg><span>Planlananlar<span class="badge" id="missedBadge" hidden></span></span></button>
@@ -394,10 +389,10 @@ async function loadAll(){
 }
 
 function showAuth(msg, isErr){
-  $('#auth').hidden = false; $('#appRoot').hidden = true; $('#tabbar').hidden = true;
+  $('#auth').hidden = false; $('#appRoot').hidden = true; $('#tabbar').hidden = true; $('#fab').hidden = true;
   const m = $('#authMsg'); m.textContent = msg || ''; m.classList.toggle('err', !!isErr);
 }
-function showApp(){ $('#auth').hidden = true; $('#appRoot').hidden = false; $('#tabbar').hidden = false; }
+function showApp(){ $('#auth').hidden = true; $('#appRoot').hidden = false; $('#tabbar').hidden = false; $('#fab').hidden = false; }
 function setUser(u){
   const changed = (u ? u.id : null) !== (USER ? USER.id : null);
   USER = u || null;
@@ -519,14 +514,7 @@ function draw(){
   if (S.tab === 'week') drawWeek();
   if (S.tab === 'todo') drawTodos();
 }
-function fillCatSelects(){
-  for (const sel of [$('#qaCat'), $('#tfCat')]){
-    const v = sel.value;
-    const html = S.cats.map(c => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('') + '<option value="">Kategorisiz</option>';
-    if (sel.dataset.h !== html){ sel.innerHTML = html; sel.dataset.h = html; if ([...sel.options].some(o => o.value === v)) sel.value = v; }
-  }
-  const d = $('#tfDur'); if (!d.options.length){ d.innerHTML = DURS.map(m => `<option value="${m}">${durTxt(m)}</option>`).join(''); d.value = '60'; }
-}
+function fillCatSelects(){}
 const loading = () => Object.values(S.loaded).some(v => !v);
 
 function drawToday(){
@@ -570,7 +558,7 @@ function drawToday(){
     if (t.sched && t.sched.date === ds) return true;
     return t.due && t.due <= ds;
   }).sort(todoSort);
-  $('#todayTodos').innerHTML = tdy.length ? tdy.map(todoRow).join('') : (loading()?'':`<li class="empty">Bugüne düşen iş yok. Yukarıdan ekleyebilirsin.</li>`);
+  $('#todayTodos').innerHTML = tdy.length ? tdy.map(todoRow).join('') : (loading()?'':`<li class="empty">Bugüne düşen iş yok. Sağ alttaki + ile ekleyebilirsin.</li>`);
   bindTodoRows($('#todayTodos'));
 }
 
@@ -588,15 +576,16 @@ function todoRow(t){
   if (t.due) meta.push(`<span class="${t.due < td && st!=='done' ? 'tag warn' : ''}">son: ${esc(dayLabel(t.due))}</span>`);
   meta.push(`<span class="mono">${durTxt(t.dur||60)}</span>`);
   if (t.sched) meta.push(`<span class="${st==='missed'?'tag warn':'tag'}">${st==='missed'?'kaçtı · ':''}${esc(dayLabel(t.sched.date))} ${t.sched.start}</span>`);
-  const btn = st === 'done' ? '' : `<button class="btn small ${st==='missed'?'primary':'ghost'}" data-plan="${t.id}">${t.sched ? (st==='missed'?'Yeniden planla':'Taşı') : 'Planla'}</button>`;
+  const btn = st === 'missed' ? `<button class="btn small primary" data-plan="${t.id}">Yeniden planla</button>`
+    : (st === 'open' && !t.due) ? `<button class="btn small ghost" data-plan="${t.id}">Planla</button>` : '';
   return `<li class="todo${st==='done'?' done':''}" style="${ccVar(t.cat)}" data-id="${t.id}">
     <button class="check" data-check="${t.id}" aria-label="${st==='done'?'Tamamlanmadı olarak işaretle':'Tamamlandı olarak işaretle'}">${CHECK}</button>
     <div class="t-main" data-edit="${t.id}"><div class="t-title">${esc(t.title)}</div><div class="t-meta">${meta.join('')}</div></div>${btn}</li>`;
 }
 function bindTodoRows(root){
   root.querySelectorAll('[data-check]').forEach(b => b.onclick = () => toggleDone(b.dataset.check));
-  root.querySelectorAll('[data-plan]').forEach(b => b.onclick = () => openPlan(b.dataset.plan));
-  root.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openTodoEdit(b.dataset.edit));
+  root.querySelectorAll('[data-plan]').forEach(b => b.onclick = () => openTaskForm(b.dataset.plan, {date:todayStr(), time:''}));
+  root.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openTaskForm(b.dataset.edit));
 }
 function toggleDone(id){
   const t = S.todos.find(x => x.id === id); if (!t) return;
@@ -645,7 +634,7 @@ function drawTodos(){
   let html = '';
   const total = G.reduce((n,g) => n + g.items.length, 0);
   if (loading()) html = '';
-  else if (!total) html = `<div class="empty">${S.filter==='all' ? 'Henüz plan yok. Yukarıdan bir iş ekle; tarih verirsen ilgili güne, vermezsen Tarihsiz grubuna düşer.' : 'Bu kategoride bir şey yok.'}</div>`;
+  else if (!total) html = `<div class="empty">${S.filter==='all' ? 'Henüz plan yok. Sağ alttaki + ile bir iş ekle; tarih ve saat verirsen doğrudan takvime girer.' : 'Bu kategoride bir şey yok.'}</div>`;
   else for (const g of G){
     if (!g.items.length) continue;
     const open = !S.collapsed.has(g.k);
@@ -880,26 +869,94 @@ function openTodoBlock(t){
     ${st==='missed'?'<p class="sh-note">Bu iş zamanında yapılmadı. Yapılacaklar listesinde seni bekliyor.</p>':''}
     <div class="sh-actions"><button class="btn primary" id="tbDone">${t.done?'Tamamlanmadı yap':'Tamamlandı'}</button><button class="btn" id="tbMove">Taşı</button><button class="btn ghost" id="tbEdit">Düzenle</button></div>`, root => {
     root.querySelector('#tbDone').onclick = () => { toggleDone(t.id); closeSheet(); };
-    root.querySelector('#tbMove').onclick = () => openPlan(t.id);
-    root.querySelector('#tbEdit').onclick = () => openTodoEdit(t.id);
+    root.querySelector('#tbMove').onclick = () => openTaskForm(t.id);
+    root.querySelector('#tbEdit').onclick = () => openTaskForm(t.id);
   });
 }
-function openTodoEdit(id){
-  const t = S.todos.find(x => x.id === id); if (!t) return;
-  openSheet(`${headHtml('İşi düzenle', t.cat)}<div class="form">
-    <label class="full">Ad<input type="text" id="teTitle" value="${esc(t.title)}"></label>
-    <label class="full">Kategori<select id="teCat">${catOptions(t.cat)}</select></label>
-    <label>Son tarih<input type="date" id="teDue" value="${t.due||''}"></label>
-    <label>Tahmini süre<select id="teDur">${DURS.map(m => `<option value="${m}"${m===(t.dur||60)?' selected':''}>${durTxt(m)}</option>`).join('')}</select></label>
-    </div><div class="sh-actions"><button class="btn primary" id="teSave">Kaydet</button><button class="btn" id="tePlan">${t.sched?'Taşı':'Planla'}</button><button class="btn danger" id="teDel">Sil</button></div>`, root => {
-    root.querySelector('#teSave').onclick = () => {
-      const title = val(root,'teTitle'); if (!title) return toast('Bir ad yaz.');
-      const d = strip(t); d.title = title; d.cat = val(root,'teCat'); d.dur = +val(root,'teDur');
-      const due = val(root,'teDue'); if (due) d.due = due; else delete d.due;
-      save('todos', t.id, d); closeSheet(); toast('Kaydedildi');
+function slotsOn(ds, dur, excludeId){
+  const busy = itemsForDate(ds).filter(x => !(x.kind==='todo' && (x.done || x.id===excludeId))).map(x => [toMin(x.start), toMin(x.end)]).sort((a,b) => a[0]-b[0]);
+  const res = [];
+  let m = ds === todayStr() ? Math.max(H0*60, Math.ceil((nowMin()+15)/30)*30) : H0*60;
+  while (m + dur <= H1*60 && res.length < 6){
+    const hit = busy.find(([a,b]) => m < b && m + dur > a);
+    if (hit){ m = Math.max(m + 30, Math.ceil(hit[1]/30)*30); continue; }
+    res.push(fromMin(m));
+    m += Math.max(dur, 60);
+  }
+  return res;
+}
+function openTaskForm(id, preset){
+  const t = id ? S.todos.find(x => x.id === id) : null;
+  if (id && !t) return;
+  const isNew = !t;
+  const st = {
+    cat: t ? (t.cat||'') : (S.filter !== 'all' && S.filter ? S.filter : (S.cats[0]?.id || '')),
+    dur: t ? (t.dur||60) : 60,
+    date: t ? (t.sched ? t.sched.date : (t.due || '')) : (S.tab === 'today' ? todayStr() : ''),
+    time: t && t.sched ? t.sched.start : ''
+  };
+  if (preset){ if ('date' in preset) st.date = preset.date; if ('time' in preset) st.time = preset.time; }
+  const catChips = () => [...S.cats, {id:'', name:'Kategorisiz', color:'c8'}].map(c => `<button type="button" class="chip" data-cat="${esc(c.id)}" style="--cc:var(--${c.color})" aria-pressed="${st.cat===c.id}"><i class="dot"></i>${esc(c.name)}</button>`).join('');
+  openSheet(`${headHtml(isNew ? 'Yeni iş' : 'İşi düzenle', st.cat)}
+    <div class="form">
+      <label class="full">Ne yapılacak?<input type="text" id="tkTitle" value="${esc(t ? t.title : '')}" placeholder="Örn. MATH201 ödev 2" enterkeyhint="done"></label>
+      <div class="full fld"><span class="lbl">Kategori</span><div class="chips wrap" id="tkCats">${catChips()}</div></div>
+      <div class="full fld"><span class="lbl">Ne zaman?</span><div class="chips wrap" id="tkQuick">
+        <button type="button" class="chip" data-q="">Tarihsiz</button><button type="button" class="chip" data-q="0">Bugün</button><button type="button" class="chip" data-q="1">Yarın</button></div></div>
+      <label>Tarih<input type="date" id="tkDate" value="${st.date}"></label>
+      <label>Saat (isteğe bağlı)<input type="time" id="tkTime" value="${st.time}"></label>
+      <div class="full fld"><span class="lbl">Tahmini süre</span><div class="chips wrap" id="tkDurs">${DURS.map(m => `<button type="button" class="chip" data-dur="${m}">${durTxt(m)}</button>`).join('')}</div></div>
+      <div class="full fld" id="tkSlotBox" hidden><span class="lbl" id="tkSlotLbl"></span><div class="chips wrap" id="tkSlots"></div></div>
+      <p class="full where" id="tkWhere"></p>
+    </div>
+    <div class="sh-actions"><button class="btn primary" id="tkSave">${isNew ? 'Ekle' : 'Kaydet'}</button>${isNew ? '' : '<button class="btn danger" id="tkDel">Sil</button>'}</div>`, root => {
+    const q = sel => root.querySelector(sel);
+    const sync = () => {
+      st.date = q('#tkDate').value; st.time = q('#tkTime').value;
+      root.querySelectorAll('[data-cat]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.cat === st.cat)));
+      root.querySelectorAll('[data-dur]').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.dur === st.dur)));
+      const t0 = todayStr(), t1 = ymd(addDays(new Date(),1));
+      root.querySelectorAll('[data-q]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.q === '' ? !st.date : (b.dataset.q === '0' ? st.date === t0 : st.date === t1))));
+      q('.sh-head').style.setProperty('--cc', `var(--${catOf(st.cat).color})`);
+      const box = q('#tkSlotBox');
+      if (st.date && !st.time){
+        const sl = slotsOn(st.date, st.dur, t && t.id);
+        box.hidden = false;
+        q('#tkSlotLbl').textContent = `${dayLabel(st.date)} için boş saatler · ${durTxt(st.dur)}`;
+        q('#tkSlots').innerHTML = sl.length ? sl.map(x => `<button type="button" class="chip mono" data-slot="${x}">${x}–${fromMin(toMin(x)+st.dur)}</button>`).join('') : '<span class="muted" style="font-size:13px">Bu gün 08:00–22:00 arasında bu süreye uygun boşluk yok.</span>';
+        q('#tkSlots').querySelectorAll('[data-slot]').forEach(b => b.onclick = () => { q('#tkTime').value = b.dataset.slot; sync(); });
+      } else box.hidden = true;
+      const w = q('#tkWhere');
+      if (st.date && st.time) w.innerHTML = `Takvime eklenecek: <b>${esc(dayLabel(st.date))} ${st.time}–${fromMin(Math.min(toMin(st.time)+st.dur, 24*60-1))}</b>`;
+      else if (st.date) w.innerHTML = `<b>${esc(dayLabel(st.date))}</b> listesine eklenecek. Saat seçersen takvimde de yer alır.`;
+      else if (st.time) w.innerHTML = 'Saat için bir tarih de seç.';
+      else w.innerHTML = '<b>Tarihsiz</b> olarak eklenecek.';
     };
-    root.querySelector('#tePlan').onclick = () => openPlan(t.id);
-    armed(root.querySelector('#teDel'), () => { remove('todos', t.id); closeSheet(); toast('İş silindi'); });
+    root.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { st.cat = b.dataset.cat; sync(); });
+    root.querySelectorAll('[data-dur]').forEach(b => b.onclick = () => { st.dur = +b.dataset.dur; sync(); });
+    root.querySelectorAll('[data-q]').forEach(b => b.onclick = () => {
+      q('#tkDate').value = b.dataset.q === '' ? '' : ymd(addDays(new Date(), +b.dataset.q));
+      if (b.dataset.q === '') q('#tkTime').value = '';
+      sync();
+    });
+    q('#tkDate').onchange = sync; q('#tkTime').onchange = sync; q('#tkTime').oninput = sync;
+    sync();
+    if (isNew) setTimeout(() => { try { q('#tkTitle').focus(); } catch {} }, 60);
+    const submit = () => {
+      const title = q('#tkTitle').value.trim(); if (!title) return toast('Ne yapılacağını yaz.');
+      sync();
+      if (st.time && !st.date) return toast('Saat için bir tarih seç.');
+      const d = isNew ? {done:false, created:Date.now()} : strip(t);
+      d.title = title; d.cat = st.cat; d.dur = st.dur;
+      delete d.sched; delete d.due;
+      if (st.date && st.time) d.sched = {date:st.date, start:st.time};
+      else if (st.date) d.due = st.date;
+      save('todos', isNew ? uid() : t.id, d); closeSheet();
+      toast(d.sched ? `${dayLabel(d.sched.date)} ${d.sched.start}'e eklendi` : d.due ? `${dayLabel(d.due)} listesine eklendi` : 'Tarihsiz olarak eklendi');
+    };
+    q('#tkSave').onclick = submit;
+    q('#tkTitle').onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); submit(); } };
+    const del = q('#tkDel'); if (del) armed(del, () => { remove('todos', t.id); closeSheet(); toast('İş silindi'); });
   });
 }
 
@@ -937,17 +994,7 @@ $('#btnSettings').onclick = () => { S.cats = S.cats.map(c => ({...c})); openSett
 $('#wkPrev').onclick = () => { S.weekOffset--; render(); };
 $('#wkNext').onclick = () => { S.weekOffset++; render(); };
 $('#wkNow').onclick = () => { S.weekOffset = 0; render(); };
-$('#quickAdd').onsubmit = e => {
-  e.preventDefault(); const title = $('#qaTitle').value.trim(); if (!title) return;
-  save('todos', uid(), {title, cat:$('#qaCat').value, due:todayStr(), dur:60, done:false, created:Date.now()});
-  $('#qaTitle').value = ''; toast('Bugüne eklendi');
-};
-$('#todoForm').onsubmit = e => {
-  e.preventDefault(); const title = $('#tfTitle').value.trim(); if (!title) return toast('Bir ad yaz.');
-  const d = {title, cat:$('#tfCat').value, dur:+$('#tfDur').value, done:false, created:Date.now()};
-  if ($('#tfDue').value) d.due = $('#tfDue').value;
-  save('todos', uid(), d); $('#tfTitle').value = ''; $('#tfDue').value = ''; toast('İş eklendi');
-};
+$('#fab').onclick = () => openTaskForm(null);
 setInterval(render, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden){ render(); loadAll(); } });
 window.addEventListener('online', loadAll);
