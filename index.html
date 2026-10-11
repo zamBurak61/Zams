@@ -355,7 +355,8 @@ const S = { cats:[], templates:[], overrides:{}, events:[], todos:[], mode:'conn
 let DB = null, ROOT = null;
 try { const t = localStorage.getItem('haftam.tab'); if (t) S.tab = t; const c = JSON.parse(localStorage.getItem('zams.collapsed') || 'null'); if (Array.isArray(c)) S.collapsed = new Set(c); } catch {}
 
-const catOf = id => S.cats.find(c => c.id === id) || {id:'', name:'Kategorisiz', color:'c8'};
+const catOf = id => S.cats.find(c => c.id === id) || S.cats[0] || {id:'', name:'', color:'c8'};
+const catId = id => catOf(id).id;
 const ccVar = id => `--cc:var(--${catOf(id).color})`;
 const campusTxt = c => CAMPUS[c] ? `${CAMPUS[c].s} ${CAMPUS[c].n}` : '';
 const placeTxt = (loc, c) => [loc, campusTxt(c)].filter(Boolean).join(' ');
@@ -633,10 +634,11 @@ function toggleDone(id){
 
 function drawTodos(){
   const fc = $('#catFilter');
-  const chips = [{id:'all', name:'Tümü'}, ...S.cats, {id:'', name:'Kategorisiz'}];
+  const chips = [{id:'all', name:'Tümü'}, ...S.cats];
+  if (S.filter !== 'all' && !S.cats.some(c => c.id === S.filter)) S.filter = 'all';
   fc.innerHTML = chips.map(c => `<button class="chip" data-f="${esc(c.id)}" aria-pressed="${S.filter===c.id}" style="${c.id!=='all'?ccVar(c.id):''}">${c.id!=='all'?'<i class="dot"></i>':''}${esc(c.name)}</button>`).join('');
   fc.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { S.filter = b.dataset.f; render(); });
-  const inFilter = x => S.filter === 'all' || (x.cat||'') === S.filter || (S.filter==='' && !S.cats.some(c=>c.id===x.cat));
+  const inFilter = x => S.filter === 'all' || catId(x.cat) === S.filter;
   const td = todayStr(), now = new Date();
   const tm = ymd(addDays(now,1)), d2 = ymd(addDays(now,2));
   const wEnd = ymd(addDays(weekStart(now),6));
@@ -775,7 +777,7 @@ function closeSheet(){ $('#sheet').hidden = true; $('#sheetBg').hidden = true; $
 $('#sheetBg').onclick = closeSheet;
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
 function armed(btn, fn){ btn.onclick = () => { if (btn.classList.contains('armed')) fn(); else { btn.classList.add('armed'); btn.dataset.t = btn.textContent; btn.textContent = 'Emin misin? Tekrar dokun'; setTimeout(() => { if (btn.isConnected){ btn.classList.remove('armed'); btn.textContent = btn.dataset.t; } }, 3000); } }; }
-const catOptions = sel => S.cats.map(c => `<option value="${esc(c.id)}"${c.id===sel?' selected':''}>${esc(c.name)}</option>`).join('') + `<option value=""${!S.cats.some(c=>c.id===sel)?' selected':''}>Kategorisiz</option>`;
+const catOptions = sel => { const cur = catId(sel); return S.cats.map(c => `<option value="${esc(c.id)}"${c.id===cur?' selected':''}>${esc(c.name)}</option>`).join(''); };
 const campusOptions = sel => `<option value="">—</option>` + Object.entries(CAMPUS).map(([k,v]) => `<option value="${k}"${k===sel?' selected':''}>${v.s} ${v.n}</option>`).join('');
 const dayOptions = sel => DAYS.map((d,i) => `<option value="${i}"${i===sel?' selected':''}>${d}</option>`).join('');
 const val = (root, id) => root.querySelector('#'+id).value.trim();
@@ -986,14 +988,14 @@ function openTaskForm(id, preset){
   if (id && !t) return;
   const isNew = !t;
   const st = {
-    cat: t ? (t.cat||'') : (S.filter !== 'all' && S.filter ? S.filter : (S.cats[0]?.id || '')),
+    cat: t ? catId(t.cat) : (S.filter !== 'all' && S.filter ? S.filter : (S.cats[0]?.id || '')),
     date: t ? (t.sched ? t.sched.date : (t.due || '')) : (S.tab === 'today' ? todayStr() : ''),
     time: t && t.sched ? t.sched.start : '',
     end: t && t.sched ? fromMin(Math.min(toMin(t.sched.start)+(t.dur||60), 23*60+59)) : '',
     find: t && t.dur ? t.dur : 60
   };
   if (preset){ if ('date' in preset) st.date = preset.date; if ('time' in preset){ st.time = preset.time; if (!preset.time) st.end = ''; } }
-  const catChips = () => [...S.cats, {id:'', name:'Kategorisiz', color:'c8'}].map(c => `<button type="button" class="chip" data-cat="${esc(c.id)}" style="--cc:var(--${c.color})" aria-pressed="${st.cat===c.id}"><i class="dot"></i>${esc(c.name)}</button>`).join('');
+  const catChips = () => S.cats.map(c => `<button type="button" class="chip" data-cat="${esc(c.id)}" style="--cc:var(--${c.color})" aria-pressed="${st.cat===c.id}"><i class="dot"></i>${esc(c.name)}</button>`).join('');
   openSheet(`${headHtml(isNew ? 'Yeni iş' : 'İşi düzenle', st.cat)}
     <div class="form">
       <label class="full">Ne yapılacak?<input type="text" id="tkTitle" value="${esc(t ? t.title : '')}" placeholder="Örn. MATH201 ödev 2" enterkeyhint="done"></label>
@@ -1092,7 +1094,14 @@ function openSettings(){
       const id = row.dataset.cid, c = () => S.cats.find(x => x.id === id);
       row.querySelector('[data-col]').onclick = e => { const cat = c(); if (!cat) return; cat.color = COLORS[(COLORS.indexOf(cat.color)+1)%COLORS.length]; e.currentTarget.style.setProperty('--cc', `var(--${cat.color})`); saveCats(); };
       row.querySelector('[data-name]').onchange = e => { const cat = c(); const n = e.target.value.trim(); if (cat && n){ cat.name = n; saveCats(); } };
-      armed(row.querySelector('[data-del]'), () => { S.cats = S.cats.filter(x => x.id !== id); saveCats(); row.remove(); toast('Kategori silindi; bağlı olanlar kategorisiz kaldı'); });
+      armed(row.querySelector('[data-del]'), () => {
+        if (S.cats.length <= 1) return toast('En az bir kategori kalmalı.');
+        const rest = S.cats.filter(x => x.id !== id), to = rest[0];
+        let moved = 0;
+        for (const coll of ['todos','events','templates']) for (const it of S[coll].filter(x => x.cat === id)){ const d = strip(it); d.cat = to.id; save(coll, it.id, d); moved++; }
+        S.cats = rest; saveCats(); openSettings();
+        toast(moved ? `Kategori silindi; ${moved} kayıt "${to.name}" kategorisine taşındı` : 'Kategori silindi');
+      });
     });
     root.querySelector('#catAdd').onsubmit = e => { e.preventDefault(); const n = val(root,'caName'); if (!n) return; S.cats = [...S.cats.map(x=>({...x})), {id:uid(), name:n, color:COLORS[S.cats.length % COLORS.length]}]; saveCats(); openSettings(); };
     root.querySelectorAll('[data-tpl]').forEach(b => b.onclick = () => openTemplateForm(S.templates.find(t => t.id === b.dataset.tpl)));
