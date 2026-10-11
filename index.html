@@ -135,6 +135,8 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .conf input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:var(--warn)}
 .conf span{display:flex;flex-direction:column;gap:2px;min-width:0}
 .conf small{color:var(--muted);font-size:12px}
+.toast{display:flex;align-items:center;gap:10px}
+.toast-act{border:0;background:transparent;color:inherit;font-weight:700;font-size:14px;padding:2px 4px;margin-left:4px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
 details.done-group summary{cursor:pointer;list-style:none}
 details.done-group summary::-webkit-details-marker{display:none}
 
@@ -621,8 +623,10 @@ function bindTodoRows(root){
 function toggleDone(id){
   const t = S.todos.find(x => x.id === id); if (!t) return;
   const d = strip(t);
-  if (t.done){ d.done = false; delete d.doneAt; } else { d.done = true; d.doneAt = Date.now(); }
+  const wasDone = !!t.done;
+  if (wasDone){ d.done = false; delete d.doneAt; } else { d.done = true; d.doneAt = Date.now(); }
   save('todos', id, d);
+  toast(wasDone ? `"${t.title}" yeniden açıldı` : `"${t.title}" yapıldı`, 'Geri al', () => { const back = strip(t); save('todos', id, back); });
 }
 
 function drawTodos(){
@@ -939,7 +943,7 @@ function openPlan(id){
 function openDayTask(id){
   const t = S.todos.find(x => x.id === id); if (!t) return;
   openSheet(`${headHtml(t.title, t.cat)}<p class="sh-meta"><span>${esc(dayLabel(t.due))} · gün içinde</span><span>${esc(catOf(t.cat).name)}</span></p>
-    <div class="sh-actions"><button class="btn primary" id="dtDone">${t.done?'Tamamlanmadı yap':'Tamamlandı'}</button><button class="btn" id="dtTime">Saat ver</button><button class="btn ghost" id="dtEdit">Düzenle</button></div>`, root => {
+    <div class="sh-actions"><button class="btn primary" id="dtTime">Saat ver</button><button class="btn" id="dtEdit">Düzenle</button><button class="btn" id="dtDone">${t.done ? 'Yapılmadı olarak işaretle' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" style="width:16px;height:16px;vertical-align:-3px;margin-right:6px"><path d="M5 12l5 5 9-10"/></svg>Yapıldı olarak işaretle'}</button></div>`, root => {
     root.querySelector('#dtDone').onclick = () => { toggleDone(t.id); closeSheet(); };
     root.querySelector('#dtTime').onclick = () => openTaskForm(t.id, {date:t.due, time:''});
     root.querySelector('#dtEdit').onclick = () => openTaskForm(t.id);
@@ -954,11 +958,11 @@ function openDayList(ds){
 }
 function openTodoBlock(t){
   const st = todoState(t);
-  openSheet(`${headHtml(t.title, t.cat)}<p class="sh-meta"><span>İş · ${esc(catOf(t.cat).name)}</span><span class="mono">${t.sched?esc(dayLabel(t.sched.date))+' '+t.sched.start:''} · ${durTxt(t.dur||60)}</span></p>
+  openSheet(`${headHtml(t.title, t.cat)}<p class="sh-meta"><span>İş · ${esc(catOf(t.cat).name)}</span><span class="mono">${t.sched ? esc(dayLabel(t.sched.date)) + ' ' + t.sched.start + '–' + fromMin(Math.min(toMin(t.sched.start)+(t.dur||60), 24*60-1)) : ''}</span></p>
     ${st==='missed'?'<p class="sh-note">Bu iş zamanında yapılmadı. Yapılacaklar listesinde seni bekliyor.</p>':''}
-    <div class="sh-actions"><button class="btn primary" id="tbDone">${t.done?'Tamamlanmadı yap':'Tamamlandı'}</button><button class="btn" id="tbMove">Taşı</button><button class="btn ghost" id="tbEdit">Düzenle</button></div>`, root => {
+    ${t.done ? '<p class="sh-note">Bu iş yapıldı olarak işaretli.</p>' : ''}
+    <div class="sh-actions"><button class="btn primary" id="tbEdit">Düzenle / taşı</button><button class="btn" id="tbDone">${t.done ? 'Yapılmadı olarak işaretle' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" style="width:16px;height:16px;vertical-align:-3px;margin-right:6px"><path d="M5 12l5 5 9-10"/></svg>Yapıldı olarak işaretle'}</button><button class="btn ghost" data-close>Kapat</button></div>`, root => {
     root.querySelector('#tbDone').onclick = () => { toggleDone(t.id); closeSheet(); };
-    root.querySelector('#tbMove').onclick = () => openTaskForm(t.id);
     root.querySelector('#tbEdit').onclick = () => openTaskForm(t.id);
   });
 }
@@ -1095,7 +1099,11 @@ function openSettings(){
 }
 
 let toastT = 0;
-function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600); }
+function toast(msg, actionLabel, action){
+  const t = $('#toast'); t.textContent = msg;
+  if (actionLabel){ const b = document.createElement('button'); b.className = 'toast-act'; b.textContent = actionLabel; b.onclick = () => { t.hidden = true; clearTimeout(toastT); action(); }; t.append(' ', b); }
+  t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, actionLabel ? 5000 : 2600);
+}
 
 // ---------- wiring ----------
 document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => { S.tab = b.dataset.tab; try { localStorage.setItem('haftam.tab', S.tab); } catch {} window.scrollTo(0,0); render(); });
