@@ -130,6 +130,11 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .adt.done i{background:var(--cc)}
 .adt.done span{text-decoration:line-through;opacity:.6}
 .adt.more{justify-content:center;color:var(--muted);border:1px dashed var(--line);background:transparent}
+.cxl{margin-top:4px;border:1px dashed color-mix(in srgb,var(--warn) 55%,transparent);background:transparent;color:var(--warn);border-radius:999px;font-size:10px;font-weight:600;padding:1px 7px}
+.conf{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);background:color-mix(in srgb,var(--warn) 8%,var(--surface));border-radius:10px;font-size:13px;color:var(--ink);cursor:pointer}
+.conf input{width:20px;height:20px;margin:1px 0 0;flex:none;accent-color:var(--warn)}
+.conf span{display:flex;flex-direction:column;gap:2px;min-width:0}
+.conf small{color:var(--muted);font-size:12px}
 details.done-group summary{cursor:pointer;list-style:none}
 details.done-group summary::-webkit-details-marker{display:none}
 
@@ -694,7 +699,7 @@ function drawWeek(){
   const days = [...Array(7)].map((_,i) => ymd(addDays(ws,i)));
   days.forEach((ds,i) => {
     const d = parseYmd(ds);
-    html += `<div class="gh${ds===td?' today':''}"><div class="dn">${DSHORT[i]}</div><div class="dd">${d.getDate()}</div><div class="fr">${durTxt(freeMinutes(ds, ds===td?nowMin():0))} boş</div></div>`;
+    html += `<div class="gh${ds===td?' today':''}"><div class="dn">${DSHORT[i]}</div><div class="dd">${d.getDate()}</div><div class="fr">${durTxt(freeMinutes(ds, ds===td?nowMin():0))} boş</div>${(() => { const n = itemsForDate(ds, true).filter(x => x.cancelled).length; return n ? `<button class="cxl" data-cxl="${ds}">↺ ${n} iptal</button>` : ''; })()}</div>`;
   });
   const untimed = days.map(ds => S.todos.filter(t => !t.sched && t.due === ds && (!t.done || (t.doneAt && ymd(new Date(t.doneAt)) === ds))).sort((a,b) => (a.done?1:0)-(b.done?1:0) || (a.created||0)-(b.created||0)));
   if (untimed.some(a => a.length)){
@@ -706,7 +711,7 @@ function drawWeek(){
   }
   html += `<div class="tcol" style="height:${H}px">${[...Array(H1-H0+1)].map((_,k) => k===0||k===H1-H0?'':`<span style="top:${k*hourPx}px">${pad(H0+k)}</span>`).join('')}</div>`;
   days.forEach((ds,i) => {
-    const items = itemsForDate(ds, true).map(x => ({...x, s:Math.max(toMin(x.start),H0*60), e:Math.min(Math.max(toMin(x.end),toMin(x.start)+20),H1*60)})).filter(x => x.e > H0*60 && x.s < H1*60);
+    const items = itemsForDate(ds).map(x => ({...x, s:Math.max(toMin(x.start),H0*60), e:Math.min(Math.max(toMin(x.end),toMin(x.start)+20),H1*60)})).filter(x => x.e > H0*60 && x.s < H1*60);
     lanes(items);
     let blocks = items.map(x => {
       const top = (x.s-H0*60)/60*hourPx, h = Math.max((x.e-x.s)/60*hourPx-2, 18);
@@ -719,8 +724,9 @@ function drawWeek(){
     html += `<div class="dcol${ds===td?' today':''}" data-date="${ds}" style="height:${H}px">${blocks}</div>`;
   });
   const grid = $('#grid'); grid.innerHTML = html;
-  const itemsByDay = days.map(ds => itemsForDate(ds, true));
+  const itemsByDay = days.map(ds => itemsForDate(ds));
   grid.querySelectorAll('[data-adt]').forEach(b => b.onclick = () => openDayTask(b.dataset.adt));
+  grid.querySelectorAll('[data-cxl]').forEach(b => b.onclick = () => openCancelled(b.dataset.cxl));
   grid.querySelectorAll('[data-admore]').forEach(b => b.onclick = () => openDayList(b.dataset.admore));
   grid.querySelectorAll('.blk').forEach(b => b.onclick = e => {
     e.stopPropagation();
@@ -835,6 +841,26 @@ function openTemplateForm(t){
   });
 }
 
+function fixedConflicts(date, s, e){
+  if (!date || !s || !e || toMin(e) <= toMin(s)) return [];
+  return itemsForDate(date).filter(x => x.kind === 'fixed' && toMin(x.start) < toMin(e) && toMin(x.end) > toMin(s));
+}
+function conflictBox(list, id, checked){
+  if (!list.length) return '';
+  return `<label class="conf"><input type="checkbox" id="${id}"${checked?' checked':''}><span><b>Bu saatlerdeki ${list.length} dersi bu hafta iptal et</b><small>${list.map(x => esc(x.title) + ' ' + x.start + '–' + x.end).join(' · ')}</small></span></label>`;
+}
+function cancelFixed(list){ list.forEach(x => save('overrides', x.wk + '_' + x.id, {week:x.wk, tpl:x.id, cancelled:true})); }
+function openCancelled(ds){
+  const list = itemsForDate(ds, true).filter(x => x.cancelled);
+  if (!list.length) return closeSheet();
+  openSheet(`<div class="sh-head"><h3>${esc(dayLabel(ds))} · iptal edilenler</h3><button class="btn small ghost" data-close>Kapat</button></div>
+    <p class="sh-meta">Bu dersler sadece bu hafta için iptal. Geri alırsan takvime döner.</p>
+    <ul class="pick-list">${list.map(x => `<li><button data-undo="${x.wk}_${x.id}" style="${ccVar(x.cat)}"><i class="dot"></i><span style="flex:1;min-width:0"><b>${esc(x.title)}</b><br><small class="muted mono">${x.start}–${x.end}${x.location ? ' · ' + esc(placeTxt(x.location, x.campus)) : ''}</small></span><span class="btn small">Geri al</span></button></li>`).join('')}</ul>
+    ${list.length > 1 ? '<div class="sh-actions"><button class="btn" id="undoAll">Hepsini geri al</button></div>' : ''}`, root => {
+    root.querySelectorAll('[data-undo]').forEach(b => b.onclick = () => { remove('overrides', b.dataset.undo); toast('Ders geri geldi'); setTimeout(() => openCancelled(ds), 0); });
+    const all = root.querySelector('#undoAll'); if (all) all.onclick = () => { list.forEach(x => remove('overrides', x.wk + '_' + x.id)); closeSheet(); toast('Dersler geri geldi'); };
+  });
+}
 function eventForm(ev, isNew){
   return `<div class="form">
     <label class="full">Ad<input type="text" id="evTitle" value="${esc(ev.title)}" placeholder="Örn. Proje toplantısı"></label>
@@ -845,15 +871,26 @@ function eventForm(ev, isNew){
     <label>Kampüs<select id="evCampus">${campusOptions(ev.campus)}</select></label>
     <label class="full">Kategori<select id="evCat">${catOptions(ev.cat)}</select></label>
     <label class="full">Not<input type="text" id="evNote" value="${esc(ev.note||'')}"></label>
+    <div class="full" id="evConf"></div>
   </div><div class="sh-actions"><button class="btn primary" id="evSave">${isNew?'Etkinlik ekle':'Kaydet'}</button>${isNew?'':'<button class="btn danger" id="evDel">Sil</button>'}</div>`;
 }
 function bindEventForm(root, id, isNew){
+  let evCancel = false;
+  const evConfs = () => fixedConflicts(val(root,'evDate'), val(root,'evStart'), val(root,'evEnd'));
+  const updConf = () => {
+    root.querySelector('#evConf').innerHTML = conflictBox(evConfs(), 'evCx', evCancel);
+    const cb = root.querySelector('#evCx'); if (cb) cb.onchange = () => { evCancel = cb.checked; };
+  };
+  ['evDate','evStart','evEnd'].forEach(k => root.querySelector('#'+k).addEventListener('change', updConf));
+  updConf();
   root.querySelector('#evSave').onclick = () => {
     const title = val(root,'evTitle'); if (!title) return toast('Bir ad yaz.');
     const date = val(root,'evDate'); if (!date) return toast('Tarih seç.');
     const s = val(root,'evStart'), e = val(root,'evEnd'); if (!validTimes(s,e)) return;
+    const cx = evCancel ? evConfs() : [];
     save('events', id, {title, date, start:s, end:e, location:val(root,'evLoc'), campus:val(root,'evCampus'), cat:val(root,'evCat'), note:val(root,'evNote')});
-    closeSheet(); toast(isNew ? 'Etkinlik eklendi' : 'Kaydedildi');
+    if (cx.length) cancelFixed(cx);
+    closeSheet(); toast((isNew ? 'Etkinlik eklendi' : 'Kaydedildi') + (cx.length ? ` · ${cx.length} ders iptal` : ''));
   };
   const del = root.querySelector('#evDel'); if (del) armed(del, () => { remove('events', id); closeSheet(); toast('Etkinlik silindi'); });
 }
@@ -963,6 +1000,7 @@ function openTaskForm(id, preset){
         <div class="chips wrap" id="tkFind">${[30,60,120,180].map(m => `<button type="button" class="chip" data-find="${m}">${durTxt(m)}</button>`).join('')}</div>
         <div class="chips wrap" id="tkSlots"></div>
       </div>
+      <div class="full" id="tkConf"></div>
       <p class="full where" id="tkWhere"></p>
     </div>
     <div class="sh-actions"><button class="btn primary" id="tkSave">${isNew ? 'Ekle' : 'Kaydet'}</button>${isNew ? '' : '<button class="btn danger" id="tkDel">Sil</button>'}</div>`, root => {
@@ -986,6 +1024,13 @@ function openTaskForm(id, preset){
         q('#tkSlots').innerHTML = sl.length ? sl.map(x => `<button type="button" class="chip mono" data-slot="${x}">${x}–${fromMin(toMin(x)+st.find)}</button>`).join('') : '<span class="muted" style="font-size:13px">Bu sürede boş yer yok.</span>';
         q('#tkSlots').querySelectorAll('[data-slot]').forEach(b => b.onclick = () => { q('#tkTime').value = b.dataset.slot; q('#tkEnd').value = fromMin(toMin(b.dataset.slot)+st.find); sync(); });
       } else box.hidden = true;
+      const cf = (st.date && st.time) ? fixedConflicts(st.date, st.time, st.end) : [];
+      const confKey = cf.map(x => x.id).join(',');
+      if (q('#tkConf').dataset.k !== confKey){
+        q('#tkConf').dataset.k = confKey;
+        q('#tkConf').innerHTML = conflictBox(cf, 'tkCx', st.cancel);
+        const cb = q('#tkCx'); if (cb) cb.onchange = () => { st.cancel = cb.checked; };
+      }
       const w = q('#tkWhere');
       if (st.date && st.time) w.innerHTML = st.end && toMin(st.end) > toMin(st.time) ? `Takvime eklenecek: <b>${esc(dayLabel(st.date))} ${st.time}–${st.end}</b>` : 'Bitiş saati başlangıçtan sonra olmalı.';
       else if (st.date) w.innerHTML = `<b>${esc(dayLabel(st.date))}</b> gününe, saatsiz olarak eklenecek. Takvimde o günün "gün içinde" satırında görünür.`;
@@ -1010,10 +1055,12 @@ function openTaskForm(id, preset){
       const d = isNew ? {done:false, created:Date.now()} : strip(t);
       d.title = title; d.cat = st.cat;
       delete d.sched; delete d.due; delete d.dur;
+      const cx = (st.cancel && st.date && st.time) ? fixedConflicts(st.date, st.time, st.end) : [];
       if (st.date && st.time){ d.sched = {date:st.date, start:st.time}; d.dur = toMin(st.end) - toMin(st.time); }
       else if (st.date) d.due = st.date;
       save('todos', isNew ? uid() : t.id, d); closeSheet();
-      toast(d.sched ? `${dayLabel(d.sched.date)} ${d.sched.start}–${st.end} eklendi` : d.due ? `${dayLabel(d.due)} gününe eklendi` : 'Tarihsiz olarak eklendi');
+      if (cx.length) cancelFixed(cx);
+      toast((d.sched ? `${dayLabel(d.sched.date)} ${d.sched.start}–${st.end} eklendi` : d.due ? `${dayLabel(d.due)} gününe eklendi` : 'Tarihsiz olarak eklendi') + (cx.length ? ` · ${cx.length} ders iptal` : ''));
     };
     q('#tkSave').onclick = submit;
     q('#tkTitle').onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); submit(); } };
