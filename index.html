@@ -150,7 +150,7 @@ details.done-group summary::-webkit-details-marker{display:none}
 .sw{width:18px;height:12px;border-radius:3px;border:1px solid var(--muted)}
 .sw.fixed{background:color-mix(in srgb,var(--muted) 14%,transparent)}
 .sw.event{background:color-mix(in srgb,var(--muted) 38%,transparent)}
-.sw.todo{border-style:dashed}
+.sw.todo{border-width:1.5px;background:color-mix(in srgb,var(--muted) 24%,transparent)}
 .grid-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 .grid{display:grid;grid-template-columns:44px repeat(7,minmax(92px,1fr));min-width:700px;position:relative}
 .gh{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line);padding:8px 4px 6px;text-align:center;z-index:2}
@@ -168,8 +168,9 @@ details.done-group summary::-webkit-details-marker{display:none}
 .blk{position:absolute;z-index:1;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;border-radius:6px;padding:3px 5px;font-size:11px;line-height:1.25;overflow:hidden;cursor:pointer;color:var(--ink);text-align:left;
   border:1px solid color-mix(in srgb,var(--cc) 55%,transparent);background:color-mix(in srgb,var(--cc) 13%,var(--surface))}
 .blk.event{background:color-mix(in srgb,var(--cc) 30%,var(--surface));border-color:var(--cc)}
-.blk.todo{border-style:dashed;border-width:1.5px;background:var(--surface)}
-.blk.todo.done{opacity:.5}
+.blk.todo{border:1.5px solid var(--cc);background:color-mix(in srgb,var(--cc) 20%,var(--surface))}
+.blk.todo.done{opacity:.45;background:var(--surface);border-style:dotted}
+.blk.todo.done b{text-decoration:line-through}
 .blk.todo.missed{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--warn) 14%,var(--surface)) 0 6px,var(--surface) 6px 12px);border-color:var(--warn)}
 .blk.cancelled{background:transparent;border-style:dashed;opacity:.5}
 .blk.cancelled b{text-decoration:line-through}
