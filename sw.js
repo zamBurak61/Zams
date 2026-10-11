@@ -1,6 +1,6 @@
 // Haftam service worker: keeps the app shell available offline.
 // Data requests to Supabase are never cached here; the page keeps its own last copy.
-const CACHE = 'zams-v4';
+const CACHE = 'zams-v5';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

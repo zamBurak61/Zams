@@ -44,7 +44,7 @@ button{cursor:pointer}
 .muted{color:var(--muted)}
 h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
 
-.app{max-width:980px;margin:0 auto;padding-inline:16px;padding-block:0 150px}
+.app{max-width:980px;margin:0 auto;padding-inline:max(16px, env(safe-area-inset-left,0px)) max(16px, env(safe-area-inset-right,0px));padding-block:0 150px}
 .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-block:14px 10px}
 .top .date{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .top h1{font-size:28px;font-weight:700;line-height:1.1}
@@ -114,7 +114,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .todo.ev{background:color-mix(in srgb,var(--cc) 7%,var(--surface))}
 .evi{width:26px;height:26px;display:grid;place-items:center;color:var(--cc)}
 .evi svg{width:18px;height:18px}
-.fab{position:fixed;right:16px;bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:35;width:58px;height:58px;border-radius:18px;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;box-shadow:0 8px 22px color-mix(in srgb,var(--accent) 38%,transparent)}
+.fab{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:35;width:58px;height:58px;border-radius:18px;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;box-shadow:0 8px 22px color-mix(in srgb,var(--accent) 38%,transparent)}
 .fab svg{width:28px;height:28px}
 .fld{display:flex;flex-direction:column;gap:6px;min-width:0}
 .fld .lbl{font-size:12px;font-weight:600;color:var(--muted)}
@@ -207,6 +207,18 @@ details.done-group summary::-webkit-details-marker{display:none}
 
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;max-width:calc(100% - 32px)}
 @media (min-width:760px){.app{padding-block:0 150px}.top h1{font-size:32px}}
+@media (orientation:landscape) and (max-height:520px){
+  .top{padding-block:8px 6px}
+  .top h1{font-size:22px}
+  .top .date{font-size:11px}
+  .tabbar button{flex-direction:row;justify-content:center;gap:8px;padding:6px 4px 7px;font-size:13px}
+  .tabbar button svg{width:20px;height:20px}
+  .fab{width:50px;height:50px;border-radius:16px;bottom:calc(52px + env(safe-area-inset-bottom,0px))}
+  .toast{bottom:calc(64px + env(safe-area-inset-bottom,0px))}
+  .app{padding-block:0 110px}
+  .sheet{max-height:94vh}
+  :root{--hour:40px}
+}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}}
 
 html{padding-top:env(safe-area-inset-top,0px)}
@@ -1044,6 +1056,7 @@ $('#fab').onclick = () => openTaskForm(null);
 setInterval(render, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden){ render(); loadAll(); } });
 window.addEventListener('online', loadAll);
+window.addEventListener('resize', render);
 setInterval(() => { if (!document.hidden) loadAll(); }, 120000);
 connect();
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
