@@ -422,6 +422,10 @@ async function loadAll(){
     else if (next[r.coll]) next[r.coll].push({id:r.id, ...r.data});
   }
   Object.assign(S, next); S.mode = 'live'; markLoaded(); snapshot(); render();
+  if (!res.data.some(r => r.coll === 'meta') && !S.cats.length){
+    S.cats = [{id:'okul', name:'Okul', color:'c1'}, {id:'is', name:'İş', color:'c4'}, {id:'kisisel', name:'Kişisel', color:'c3'}];
+    saveCats();
+  }
 }
 
 function showAuth(msg, isErr){
