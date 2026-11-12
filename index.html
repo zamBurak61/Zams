@@ -155,6 +155,26 @@ details.done-group summary::-webkit-details-marker{display:none}
 .sw.fixed{background:color-mix(in srgb,var(--muted) 14%,transparent)}
 .sw.event{background:color-mix(in srgb,var(--muted) 38%,transparent)}
 .sw.todo{border-width:1.5px;background:color-mix(in srgb,var(--muted) 24%,transparent)}
+.fit-btn .ic-in{display:none}
+.fit-btn[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.fit-btn[aria-pressed=true] .ic-in{display:block}
+.fit-btn[aria-pressed=true] .ic-out{display:none}
+.fitmode .legend,.fitmode .hint{display:none}
+.grid.fit{grid-template-columns:28px repeat(7,minmax(0,1fr));min-width:0}
+.grid.fit .gh{padding:4px 1px 4px}
+.grid.fit .gh .dn{font-size:10px;letter-spacing:.02em}
+.grid.fit .gh .dd{font-size:15px}
+.grid.fit .gh .fr{display:none}
+.grid.fit .cxl{font-size:9px;padding:0 4px;margin-top:2px}
+.grid.fit .tcol span{right:3px;font-size:9px}
+.grid.fit .blk{padding:1px 2px;border-radius:4px;font-size:9.5px;line-height:1.15}
+.grid.fit .blk b{font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:clip;letter-spacing:-.01em}
+.grid.fit .blk i.pl{font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:clip;display:block;font-family:var(--f-mono)}
+.grid.fit .gad-l{font-size:8px;padding-right:3px}
+.grid.fit .gad{padding:4px 1px 6px;gap:2px}
+.grid.fit .adt{font-size:9.5px;padding:2px 3px;gap:3px}
+.grid.fit .adt i{width:7px;height:7px}
+.grid.fit .nowline::before{left:-3px;top:-2px;width:6px;height:6px}
 .grid-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 .grid{display:grid;grid-template-columns:44px repeat(7,minmax(92px,1fr));min-width:700px;position:relative}
 .gh{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--line);padding:8px 4px 6px;text-align:center;z-index:2}
@@ -288,6 +308,7 @@ img{max-width:100%}
       <div id="wkLabel"></div>
       <button class="chip" id="wkNow">Bu hafta</button>
       <button class="icon-btn" id="wkNext" aria-label="Sonraki hafta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></button>
+      <button class="icon-btn fit-btn" id="wkFit" aria-pressed="false" aria-label="Tüm haftayı ekrana sığdır" title="Tüm hafta"><svg class="ic-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><svg class="ic-in" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg></button>
     </div>
     <div class="legend"><span><i class="sw fixed"></i>Sabit</span><span><i class="sw event"></i>Esnek etkinlik</span><span><i class="sw todo"></i>Saati olan iş</span><span><i class="sw fixed" style="border-radius:50%"></i>Gün içinde (saatsiz)</span><span>↓ Güney · ↑ Kuzey · – Hisar</span></div>
     <div class="grid-wrap" id="gridWrap"><div class="grid" id="grid"></div></div>
@@ -351,9 +372,9 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID().replace(/-/g,'').slic
 // ---------- state ----------
 const S = { cats:[], templates:[], overrides:{}, events:[], todos:[], mode:'connecting',
   loaded:{meta:false,templates:false,overrides:false,events:false,todos:false},
-  tab:'today', weekOffset:0, filter:'all', collapsed:new Set(['done']) };
+  tab:'today', weekOffset:0, filter:'all', collapsed:new Set(['done']), fit:false, fitHour:0 };
 let DB = null, ROOT = null;
-try { const t = localStorage.getItem('haftam.tab'); if (t) S.tab = t; const c = JSON.parse(localStorage.getItem('zams.collapsed') || 'null'); if (Array.isArray(c)) S.collapsed = new Set(c); } catch {}
+try { S.fit = localStorage.getItem('zams.fit') === '1'; const t = localStorage.getItem('haftam.tab'); if (t) S.tab = t; const c = JSON.parse(localStorage.getItem('zams.collapsed') || 'null'); if (Array.isArray(c)) S.collapsed = new Set(c); } catch {}
 
 const catOf = id => S.cats.find(c => c.id === id) || S.cats[0] || {id:'', name:'', color:'c8'};
 const catId = id => catOf(id).id;
@@ -700,13 +721,18 @@ function eventRow(ev){
 }
 
 let lastWeekScrolled = null;
-function drawWeek(){
+function drawWeek(depth){
+  depth = depth || 0;
   const ws = addDays(weekStart(new Date()), S.weekOffset*7), we = addDays(ws, 6);
   $('#wkLabel').textContent = ws.getMonth() === we.getMonth()
     ? `${ws.getDate()}–${we.getDate()} ${MONTHS[we.getMonth()]}`
     : `${ws.getDate()} ${MSHORT[ws.getMonth()]} – ${we.getDate()} ${MSHORT[we.getMonth()]}`;
   $('#wkNow').hidden = S.weekOffset === 0;
-  const hourPx = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 46;
+  const fit = S.fit;
+  $('#tab-week').classList.toggle('fitmode', fit);
+  const fb = $('#wkFit'); fb.setAttribute('aria-pressed', String(fit)); fb.setAttribute('aria-label', fit ? 'Normal görünüme dön' : 'Tüm haftayı ekrana sığdır');
+  const hourPx = fit ? (S.fitHour || 30) : (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 46);
+  const short = t => fit ? String(t).replace(/\.\d+(?=\b|\s|$)/, '') : t;
   const H = (H1-H0)*hourPx, td = todayStr();
   let html = `<div class="gh" style="grid-column:1"></div>`;
   const days = [...Array(7)].map((_,i) => ymd(addDays(ws,i)));
@@ -722,22 +748,35 @@ function drawWeek(){
       adHtml += `<div class="gad${days[i]===td?' today':''}">${list.map(t => `<button class="adt${t.done?' done':''}" data-adt="${t.id}" style="${ccVar(t.cat)}"><i></i><span>${esc(t.title)}</span></button>`).join('')}</div>`;
     });
   }
-  html += `<div class="tcol" style="height:${H}px">${[...Array(H1-H0+1)].map((_,k) => k===0||k===H1-H0?'':`<span style="top:${k*hourPx}px">${pad(H0+k)}</span>`).join('')}</div>`;
+  const lblEvery = hourPx < 16 ? 2 : 1;
+  html += `<div class="tcol" style="height:${H}px">${[...Array(H1-H0+1)].map((_,k) => (k===0||k===H1-H0||k%lblEvery) ? '' : `<span style="top:${k*hourPx}px">${pad(H0+k)}</span>`).join('')}</div>`;
   days.forEach((ds,i) => {
     const items = itemsForDate(ds).map(x => ({...x, s:Math.max(toMin(x.start),H0*60), e:Math.min(Math.max(toMin(x.end),toMin(x.start)+20),H1*60)})).filter(x => x.e > H0*60 && x.s < H1*60);
     lanes(items);
     let blocks = items.map(x => {
-      const top = (x.s-H0*60)/60*hourPx, h = Math.max((x.e-x.s)/60*hourPx-2, 18);
+      const top = (x.s-H0*60)/60*hourPx, h = fit ? Math.max((x.e-x.s)/60*hourPx-1, 8) : Math.max((x.e-x.s)/60*hourPx-2, 18);
       const w = 100/x.lanes;
-      const cls = ['blk', h<=50?'short':'', x.kind, x.cancelled?'cancelled':'', x.done?'done':'', x.missed&&!x.done?'missed':''].join(' ');
-      const place = [x.location, CAMPUS[x.campus] ? CAMPUS[x.campus].s + CAMPUS[x.campus].n : ''].filter(Boolean).join(' ');
+      const cls = ['blk', (fit || h<=50)?'short':'', x.kind, x.cancelled?'cancelled':'', x.done?'done':'', x.missed&&!x.done?'missed':''].join(' ');
+      const place = fit ? [x.location, CAMPUS[x.campus] ? CAMPUS[x.campus].s : ''].filter(Boolean).join('') : [x.location, CAMPUS[x.campus] ? CAMPUS[x.campus].s + CAMPUS[x.campus].n : ''].filter(Boolean).join(' ');
+      if (fit) return `<button class="${cls}" data-d="${i}" data-k="${esc(x.kind+':'+x.id)}" style="${ccVar(x.cat)};top:${top}px;height:${h}px;left:calc(${x.lane*w}% + 1px);width:calc(${w}% - 2px)">${h >= 11 ? `<b>${x.kind==='todo'&&x.done?'✓ ':''}${esc(short(x.title))}</b>` : ''}${h > 24 && place ? `<i class="pl">${esc(place)}</i>` : ''}</button>`;
       return `<button class="${cls}" data-d="${i}" data-k="${esc(x.kind+':'+x.id)}" style="${ccVar(x.cat)};top:${top}px;height:${h}px;left:calc(${x.lane*w}% + 2px);width:calc(${w}% - 4px)"><b>${x.kind==='todo'?(x.done?'✓ ':'○ '):''}${esc(x.title)}</b>${h>50 ? `<i>${x.start}–${x.end}</i>${place?`<i class="pl">${esc(place)}</i>`:''}` : h>28 ? (place ? `<i class="pl">${esc(place)}</i>` : `<i>${x.start}–${x.end}</i>`) : ''}</button>`;
     }).join('');
     if (ds === td){ const nm = nowMin(); if (nm > H0*60 && nm < H1*60) blocks += `<div class="nowline" style="top:${(nm-H0*60)/60*hourPx}px"></div>`; }
     html += `<div class="dcol${ds===td?' today':''}" data-date="${ds}" style="height:${H}px">${blocks}</div>`;
   });
   html += adHtml;
-  const grid = $('#grid'); grid.innerHTML = html;
+  const grid = $('#grid');
+  grid.classList.toggle('fit', fit);
+  if (fit) grid.style.setProperty('--hour', hourPx + 'px'); else grid.style.removeProperty('--hour');
+  grid.innerHTML = html;
+  if (fit && depth < 2){
+    const wrap = $('#gridWrap'), gh = grid.querySelector('.gh:not([style])');
+    const tabH = ($('#tabbar') && !$('#tabbar').hidden) ? $('#tabbar').getBoundingClientRect().height : 0;
+    const wrapTop = wrap.getBoundingClientRect().top + window.scrollY;
+    const avail = window.innerHeight - tabH - (gh ? gh.getBoundingClientRect().height : 50) - wrapTop - 10;
+    const want = Math.max(10, Math.floor(avail / (H1 - H0) * 2) / 2);
+    if (Math.abs(want - hourPx) > 0.4){ S.fitHour = want; return drawWeek(depth + 1); }
+  }
   const itemsByDay = days.map(ds => itemsForDate(ds));
   grid.querySelectorAll('[data-adt]').forEach(b => b.onclick = () => openDayTask(b.dataset.adt));
   grid.querySelectorAll('[data-cxl]').forEach(b => b.onclick = () => openCancelled(b.dataset.cxl));
@@ -753,8 +792,9 @@ function drawWeek(){
     const m = Math.floor(((e.clientY - r.top)/hourPx*60 + H0*60)/30)*30;
     openNew(col.dataset.date, fromMin(Math.min(Math.max(m, H0*60), H1*60-30)));
   });
-  const key = ymd(ws);
-  if (lastWeekScrolled !== key){
+  const key = ymd(ws) + (fit ? 'f' : '');
+  if (fit){ lastWeekScrolled = key; $('#gridWrap').scrollLeft = 0; }
+  else if (lastWeekScrolled !== key){
     lastWeekScrolled = key;
     const wrap = $('#gridWrap');
     const ti = days.indexOf(td);
@@ -1127,6 +1167,11 @@ $('#btnSettings').onclick = () => { S.cats = S.cats.map(c => ({...c})); openSett
 $('#wkPrev').onclick = () => { S.weekOffset--; render(); };
 $('#wkNext').onclick = () => { S.weekOffset++; render(); };
 $('#wkNow').onclick = () => { S.weekOffset = 0; render(); };
+$('#wkFit').onclick = () => {
+  S.fit = !S.fit; S.fitHour = 0; lastWeekScrolled = null;
+  try { localStorage.setItem('zams.fit', S.fit ? '1' : '0'); } catch {}
+  window.scrollTo(0, 0); render();
+};
 $('#fab').onclick = () => openTaskForm(null);
 setInterval(render, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden){ render(); loadAll(); } });
