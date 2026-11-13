@@ -228,9 +228,11 @@ details.done-group summary::-webkit-details-marker{display:none}
 .tabbar .badge{font-family:var(--f-mono);font-size:10px;background:var(--warn);color:var(--surface);border-radius:999px;padding:0 5px;margin-left:2px}
 
 /* sheet */
-.sheet-bg{position:fixed;inset:0;background:color-mix(in srgb,var(--ink) 40%,transparent);z-index:40}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--surface);border-radius:18px 18px 0 0;max-height:88vh;overflow-y:auto;padding-inline:16px;padding-block:8px calc(20px + env(safe-area-inset-bottom,0px));max-width:620px;margin:0 auto;box-shadow:0 -10px 40px color-mix(in srgb,var(--ink) 20%,transparent)}
-.handle{width:40px;height:4px;border-radius:2px;background:var(--line);margin:4px auto 12px}
+.sheet-bg{position:fixed;inset:0;background:color-mix(in srgb,var(--ink) 40%,transparent);z-index:40;touch-action:none;overscroll-behavior:none}
+html.sheet-open,html.sheet-open body{overflow:hidden;overscroll-behavior:none}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--surface);border-radius:18px 18px 0 0;max-height:88vh;overflow-y:auto;padding-inline:16px;padding-block:8px calc(20px + env(safe-area-inset-bottom,0px));max-width:620px;margin:0 auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-shadow:0 -10px 40px color-mix(in srgb,var(--ink) 20%,transparent)}
+.handle{width:40px;height:5px;border-radius:3px;background:var(--line);margin:2px auto 10px;position:relative;cursor:grab}
+.handle::before{content:"";position:absolute;inset:-12px -60px}
 .sh-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
 .sh-head h3{font-size:21px;font-weight:700;flex:1;overflow-wrap:anywhere}
 .sh-meta{color:var(--muted);font-size:14px;margin:0 0 10px;display:flex;flex-wrap:wrap;gap:4px 10px}
@@ -360,7 +362,7 @@ const MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağu
 const MSHORT = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
 const CAMPUS = {G:{s:'↓',n:'Güney'},K:{s:'↑',n:'Kuzey'},H:{s:'–',n:'Hisar'}};
 const COLORS = ['c1','c2','c3','c4','c5','c6','c7','c8'];
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 const DURS = [15,30,45,60,90,120,180,240];
 const H0 = 8, H1 = 22;
 
@@ -829,12 +831,58 @@ function lanes(items){
 
 // ---------- sheets ----------
 function openSheet(html, bind){
-  $('#sheetBody').innerHTML = html; $('#sheet').hidden = false; $('#sheetBg').hidden = false;
+  const sh = $('#sheet'), sb = $('#sheetBg');
+  sh.style.transition = ''; sh.style.transform = ''; sb.style.transition = ''; sb.style.opacity = '';
+  document.documentElement.classList.add('sheet-open');
+  $('#sheetBody').innerHTML = html; sh.hidden = false; sb.hidden = false;
   $('#sheet').scrollTop = 0;
   if (bind) bind($('#sheetBody'));
   $('#sheetBody').querySelectorAll('[data-close]').forEach(b => b.onclick = closeSheet);
 }
-function closeSheet(){ $('#sheet').hidden = true; $('#sheetBg').hidden = true; $('#sheetBody').innerHTML = ''; }
+function closeSheet(){
+  const sh = $('#sheet'), sb = $('#sheetBg');
+  sh.hidden = true; sb.hidden = true; $('#sheetBody').innerHTML = '';
+  sh.style.transition = ''; sh.style.transform = ''; sb.style.transition = ''; sb.style.opacity = '';
+  document.documentElement.classList.remove('sheet-open');
+}
+// Drag the sheet down to close it (from the handle, or anywhere once its content is scrolled to the top).
+(() => {
+  const sh = $('#sheet'), sb = $('#sheetBg');
+  let y0 = null, dy = 0, t0 = 0, dragging = false;
+  sh.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1){ y0 = null; return; }
+    const onHandle = !!e.target.closest('.handle');
+    if (sh.scrollTop > 0 && !onHandle){ y0 = null; return; }
+    y0 = e.touches[0].clientY; dy = 0; t0 = Date.now(); dragging = false;
+  }, {passive:true});
+  sh.addEventListener('touchmove', e => {
+    if (y0 === null) return;
+    const d = e.touches[0].clientY - y0;
+    if (!dragging){
+      if (d > 8 && sh.scrollTop <= 0){ dragging = true; sh.style.transition = 'none'; sb.style.transition = 'none'; }
+      else { if (d < -4) y0 = null; return; }
+    }
+    if (e.cancelable) e.preventDefault();
+    dy = Math.max(0, d - 8);
+    sh.style.transform = `translateY(${dy}px)`;
+    sb.style.opacity = String(Math.max(0.1, 1 - dy / ((sh.offsetHeight || 400) * 1.1)));
+  }, {passive:false});
+  const end = () => {
+    if (y0 === null) return;
+    y0 = null;
+    if (!dragging) return;
+    dragging = false;
+    const v = dy / Math.max(1, Date.now() - t0);
+    sh.style.transition = 'transform .2s ease-out'; sb.style.transition = 'opacity .2s ease-out';
+    if (dy > Math.min(140, sh.offsetHeight * 0.3) || (v > 0.5 && dy > 30)){
+      sh.style.transform = `translateY(${sh.offsetHeight + 40}px)`; sb.style.opacity = '0';
+      setTimeout(closeSheet, 190);
+    } else { sh.style.transform = ''; sb.style.opacity = ''; }
+  };
+  sh.addEventListener('touchend', end);
+  sh.addEventListener('touchcancel', end);
+  sb.addEventListener('touchmove', e => { if (e.cancelable) e.preventDefault(); }, {passive:false});
+})();
 $('#sheetBg').onclick = closeSheet;
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
 function armed(btn, fn){ btn.onclick = () => { if (btn.classList.contains('armed')) fn(); else { btn.classList.add('armed'); btn.dataset.t = btn.textContent; btn.textContent = 'Emin misin? Tekrar dokun'; setTimeout(() => { if (btn.isConnected){ btn.classList.remove('armed'); btn.textContent = btn.dataset.t; } }, 3000); } }; }
