@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Zam\'s Widget</string>
+    <string name="w_list">Bugünün işleri</string>
+    <string name="w_day">Bugün · takvim</string>
+    <string name="w_week">Hafta</string>
+    <string name="d_list">Bugüne düşen işlerin listesi</string>
+    <string name="d_day">Bugünün saat saat programı</string>
+    <string name="d_week">Haftanın tamamı tek tabloda</string>
+    <string name="refresh">Yenile</string>
+</resources>
