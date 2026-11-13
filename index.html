@@ -139,6 +139,19 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .conf small{color:var(--muted);font-size:12px}
 .toast{display:flex;align-items:center;gap:10px}
 .toast-act{border:0;background:transparent;color:inherit;font-weight:700;font-size:14px;padding:2px 4px;margin-left:4px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.prep-add{width:100%;display:flex;flex-direction:column;align-items:center;gap:2px;border:1.5px dashed var(--line);background:transparent;border-radius:10px;padding:10px;font-weight:600;color:var(--accent)}
+.prep-add small{font-weight:500;color:var(--muted);font-size:12px}
+.prep-add:disabled{color:var(--muted);cursor:not-allowed}
+.prep-card{display:flex;flex-direction:column;gap:8px;border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));background:color-mix(in srgb,var(--accent) 5%,var(--surface));border-radius:12px;padding:10px 12px}
+.prep-h{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:700;color:var(--accent)}
+.prep-card input[type=text]{width:100%}
+.prep-dt{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.prep-dt label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--muted);min-width:0}
+.prep-dt input{width:100%}
+.prep-where{margin:0;font-size:13px;color:var(--ink)}
+.chip:disabled{opacity:.4;cursor:not-allowed}
+.prep-note{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.prep-tag{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
 details.done-group summary{cursor:pointer;list-style:none}
 details.done-group summary::-webkit-details-marker{display:none}
 
@@ -604,6 +617,7 @@ function drawToday(){
     if (x.kind==='fixed' && x.cancelled) tags.push('<span class="tag warn">bu hafta iptal</span>');
     else if (x.changed) tags.push('<span class="tag">bu hafta değişti</span>');
     if (x.kind==='todo') tags.push(`<span class="tag${x.missed?' warn':''}">${x.done?'yapıldı':x.missed?'kaçtı':'iş'}</span>`);
+    if (x.kind==='todo' && x.ref && getMain(x.ref)) tags.push(`<span class="tag prep-tag">↳ ${esc(getMain(x.ref).title)} hazırlığı</span>`);
     const place = placeTxt(x.location, x.campus);
     return `<li class="ag${past?' past':''}${isLive?' live':''}${x.cancelled?' cancelled':''}" data-i="${i}" style="${ccVar(x.cat)}">
       <div class="tm">${x.start}<small>${x.end}</small></div>
@@ -634,6 +648,7 @@ const todoSort = (a,b) => {
 function todoRow(t){
   const st = todoState(t), c = catOf(t.cat), td = todayStr(), meta = [];
   meta.push(`<span class="cat"><i class="dot"></i>${esc(c.name)}</span>`);
+  const pm = getMain(t); if (pm) meta.push(`<span class="tag prep-tag">↳ ${esc(pm.title)}</span>`);
   if (t.due) meta.push(`<span class="${t.due < td && st!=='done' ? 'tag warn' : ''}">son: ${esc(dayLabel(t.due))}</span>`);
   if (t.sched) meta.push(`<span class="mono">${t.sched.start}–${fromMin(Math.min(toMin(t.sched.start)+(t.dur||60), 24*60-1))}</span>`); else if (t.dur) meta.push(`<span class="mono">${durTxt(t.dur)}</span>`);
   if (t.sched) meta.push(`<span class="${st==='missed'?'tag warn':'tag'}">${st==='missed'?'kaçtı · ':''}${esc(dayLabel(t.sched.date))} ${t.sched.start}</span>`);
@@ -745,7 +760,7 @@ function drawWeek(depth){
   if (untimed.some(a => a.length)){
     adHtml += `<div class="gad-l">gün<br>içinde</div>`;
     untimed.forEach((list, i) => {
-      adHtml += `<div class="gad${days[i]===td?' today':''}">${list.map(t => `<button class="adt${t.done?' done':''}" data-adt="${t.id}" style="${ccVar(t.cat)}"><i></i><span>${esc(t.title)}</span></button>`).join('')}</div>`;
+      adHtml += `<div class="gad${days[i]===td?' today':''}">${list.map(t => `<button class="adt${t.done?' done':''}" data-adt="${t.id}" style="${ccVar(t.cat)}"><i></i><span>${getMain(t) ? '↳ ' : ''}${esc(t.title)}</span></button>`).join('')}</div>`;
     });
   }
   const lblEvery = hourPx < 16 ? 2 : 1;
@@ -759,7 +774,7 @@ function drawWeek(depth){
       const cls = ['blk', (fit || h<=50)?'short':'', x.kind, x.cancelled?'cancelled':'', x.done?'done':'', x.missed&&!x.done?'missed':''].join(' ');
       const place = fit ? [x.location, CAMPUS[x.campus] ? CAMPUS[x.campus].s : ''].filter(Boolean).join('') : [x.location, CAMPUS[x.campus] ? CAMPUS[x.campus].s + CAMPUS[x.campus].n : ''].filter(Boolean).join(' ');
       if (fit) return `<button class="${cls}" data-d="${i}" data-k="${esc(x.kind+':'+x.id)}" style="${ccVar(x.cat)};top:${top}px;height:${h}px;left:calc(${x.lane*w}% + 1px);width:calc(${w}% - 2px)">${h >= 11 ? `<b>${x.kind==='todo'&&x.done?'✓ ':''}${esc(short(x.title))}</b>` : ''}${h > 24 && place ? `<i class="pl">${esc(place)}</i>` : ''}</button>`;
-      return `<button class="${cls}" data-d="${i}" data-k="${esc(x.kind+':'+x.id)}" style="${ccVar(x.cat)};top:${top}px;height:${h}px;left:calc(${x.lane*w}% + 2px);width:calc(${w}% - 4px)"><b>${x.kind==='todo'?(x.done?'✓ ':'○ '):''}${esc(x.title)}</b>${h>50 ? `<i>${x.start}–${x.end}</i>${place?`<i class="pl">${esc(place)}</i>`:''}` : h>28 ? (place ? `<i class="pl">${esc(place)}</i>` : `<i>${x.start}–${x.end}</i>`) : ''}</button>`;
+      return `<button class="${cls}" data-d="${i}" data-k="${esc(x.kind+':'+x.id)}" style="${ccVar(x.cat)};top:${top}px;height:${h}px;left:calc(${x.lane*w}% + 2px);width:calc(${w}% - 4px)"><b>${x.kind==='todo'?(x.done?'✓ ':(x.ref && getMain(x.ref) ? '↳ ' : '○ ')):''}${esc(x.title)}</b>${h>50 ? `<i>${x.start}–${x.end}</i>${place?`<i class="pl">${esc(place)}</i>`:''}` : h>28 ? (place ? `<i class="pl">${esc(place)}</i>` : `<i>${x.start}–${x.end}</i>`) : ''}</button>`;
     }).join('');
     if (ds === td){ const nm = nowMin(); if (nm > H0*60 && nm < H1*60) blocks += `<div class="nowline" style="top:${(nm-H0*60)/60*hourPx}px"></div>`; }
     html += `<div class="dcol${ds===td?' today':''}" data-date="${ds}" style="height:${H}px">${blocks}</div>`;
@@ -926,6 +941,7 @@ function eventForm(ev, isNew){
     <label class="full">Kategori<select id="evCat">${catOptions(ev.cat)}</select></label>
     <label class="full">Not<input type="text" id="evNote" value="${esc(ev.note||'')}"></label>
     <div class="full" id="evConf"></div>
+    <div class="full" id="evPrep"></div>
   </div><div class="sh-actions"><button class="btn primary" id="evSave">${isNew?'Etkinlik ekle':'Kaydet'}</button>${isNew?'':'<button class="btn danger" id="evDel">Sil</button>'}</div>`;
 }
 function bindEventForm(root, id, isNew){
@@ -937,16 +953,23 @@ function bindEventForm(root, id, isNew){
   };
   ['evDate','evStart','evEnd'].forEach(k => root.querySelector('#'+k).addEventListener('change', updConf));
   updConf();
+  const old = isNew ? null : S.events.find(e => e.id === id);
+  const pp = mountPrep(root.querySelector('#evPrep'), {existing: old ? getPrep(old) : null, orig: old ? mainDT('events', old) : null, main: () => ({title: val(root,'evTitle'), date: val(root,'evDate'), time: val(root,'evStart')})});
+  root.querySelector('#evTitle').addEventListener('input', () => pp.title());
+  ['evDate','evStart'].forEach(k => root.querySelector('#'+k).addEventListener('change', () => pp.refresh()));
   root.querySelector('#evSave').onclick = () => {
     const title = val(root,'evTitle'); if (!title) return toast('Bir ad yaz.');
     const date = val(root,'evDate'); if (!date) return toast('Tarih seç.');
     const s = val(root,'evStart'), e = val(root,'evEnd'); if (!validTimes(s,e)) return;
+    const perr = pp.error({date, time:s}); if (perr) return toast(perr);
     const cx = evCancel ? evConfs() : [];
-    save('events', id, {title, date, start:s, end:e, location:val(root,'evLoc'), campus:val(root,'evCampus'), cat:val(root,'evCat'), note:val(root,'evNote')});
+    const data = {title, date, start:s, end:e, location:val(root,'evLoc'), campus:val(root,'evCampus'), cat:val(root,'evCat'), note:val(root,'evNote')};
+    pp.apply('events', id, data, old);
+    save('events', id, data);
     if (cx.length) cancelFixed(cx);
     closeSheet(); toast((isNew ? 'Etkinlik eklendi' : 'Kaydedildi') + (cx.length ? ` · ${cx.length} ders iptal` : ''));
   };
-  const del = root.querySelector('#evDel'); if (del) armed(del, () => { remove('events', id); closeSheet(); toast('Etkinlik silindi'); });
+  const del = root.querySelector('#evDel'); if (del) armed(del, () => { const ev = S.events.find(e => e.id === id); if (ev) deleteWithPrep('events', ev, 'Etkinlik', 'etkinliği'); else closeSheet(); });
 }
 function openEvent(ev){
   openSheet(`${headHtml(ev.title, ev.cat)}<p class="sh-meta"><span>Esnek etkinlik · ${esc(catOf(ev.cat).name)}</span></p>${eventForm(ev,false)}`, root => bindEventForm(root, ev.id, false));
@@ -970,7 +993,8 @@ function openNew(date, time){
 function busyEnd(date, time){ const m = toMin(time); const nx = itemsForDate(date).map(x => toMin(x.start)).filter(s => s > m); return nx.length ? Math.min(...nx) : 24*60; }
 function scheduleTodo(id, date, start){
   const t = S.todos.find(x => x.id === id); if (!t) return;
-  const d = strip(t); d.sched = {date, start}; d.done = false; delete d.doneAt;
+  const d = strip(t); d.sched = {date, start}; d.done = false; delete d.doneAt; delete d.due;
+  followPrep('todos', t, d);
   save('todos', id, d); toast(`${dayLabel(date)} ${start}'e yerleştirildi`);
 }
 
@@ -992,7 +1016,9 @@ function openPlan(id){
 function openDayTask(id){
   const t = S.todos.find(x => x.id === id); if (!t) return;
   openSheet(`${headHtml(t.title, t.cat)}<p class="sh-meta"><span>${esc(dayLabel(t.due))} · gün içinde</span><span>${esc(catOf(t.cat).name)}</span></p>
+    ${prepNotes(t)}
     <div class="sh-actions"><button class="btn primary" id="dtTime">Saat ver</button><button class="btn" id="dtEdit">Düzenle</button><button class="btn" id="dtDone">${t.done ? 'Yapılmadı olarak işaretle' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" style="width:16px;height:16px;vertical-align:-3px;margin-right:6px"><path d="M5 12l5 5 9-10"/></svg>Yapıldı olarak işaretle'}</button></div>`, root => {
+    bindPrepNotes(root, t);
     root.querySelector('#dtDone').onclick = () => { toggleDone(t.id); closeSheet(); };
     root.querySelector('#dtTime').onclick = () => openTaskForm(t.id, {date:t.due, time:''});
     root.querySelector('#dtEdit').onclick = () => openTaskForm(t.id);
@@ -1008,12 +1034,150 @@ function openDayList(ds){
 function openTodoBlock(t){
   const st = todoState(t);
   openSheet(`${headHtml(t.title, t.cat)}<p class="sh-meta"><span>İş · ${esc(catOf(t.cat).name)}</span><span class="mono">${t.sched ? esc(dayLabel(t.sched.date)) + ' ' + t.sched.start + '–' + fromMin(Math.min(toMin(t.sched.start)+(t.dur||60), 24*60-1)) : ''}</span></p>
+    ${prepNotes(t)}
     ${st==='missed'?'<p class="sh-note">Bu iş zamanında yapılmadı. Yapılacaklar listesinde seni bekliyor.</p>':''}
     ${t.done ? '<p class="sh-note">Bu iş yapıldı olarak işaretli.</p>' : ''}
     <div class="sh-actions"><button class="btn primary" id="tbEdit">Düzenle / taşı</button><button class="btn" id="tbDone">${t.done ? 'Yapılmadı olarak işaretle' : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" style="width:16px;height:16px;vertical-align:-3px;margin-right:6px"><path d="M5 12l5 5 9-10"/></svg>Yapıldı olarak işaretle'}</button><button class="btn ghost" data-close>Kapat</button></div>`, root => {
+    bindPrepNotes(root, t);
     root.querySelector('#tbDone').onclick = () => { toggleDone(t.id); closeSheet(); };
     root.querySelector('#tbEdit').onclick = () => openTaskForm(t.id);
   });
+}
+// ---------- preparation steps ----------
+const getPrep = m => (m && m.prep) ? S.todos.find(t => t.id === m.prep) || null : null;
+const getMain = p => (p && p.prepFor) ? (S[p.prepFor.coll] || []).find(x => x.id === p.prepFor.id) || null : null;
+const mainDT = (coll, m) => coll === 'events' ? {date: m.date || '', time: m.start || ''} : {date: m.sched ? m.sched.date : (m.due || ''), time: m.sched ? m.sched.start : ''};
+function dtDelta(a, b){
+  if (!a || !b || !a.date || !b.date) return 0;
+  const days = Math.round((parseYmd(b.date) - parseYmd(a.date)) / 864e5);
+  return days * 1440 + ((a.time && b.time) ? toMin(b.time) - toMin(a.time) : 0);
+}
+function shiftSched(sc, delta){
+  let m = toMin(sc.start) + delta; const dd = Math.floor(m / 1440); m -= dd * 1440;
+  return {date: ymd(addDays(parseYmd(sc.date), dd)), start: fromMin(m)};
+}
+const whenTxt = (coll, m) => { const d = mainDT(coll, m); return d.date ? dayLabel(d.date) + (d.time ? ' ' + d.time : '') : 'tarihsiz'; };
+const prepWhen = p => p.sched ? `${dayLabel(p.sched.date)} ${p.sched.start}–${fromMin(Math.min(toMin(p.sched.start) + (p.dur || 60), 1439))}` : p.due ? `${dayLabel(p.due)} · saatsiz` : 'tarihsiz';
+function followPrep(coll, oldMain, newMain){
+  const p = getPrep(oldMain); if (!p) return;
+  if (p.sched){ const dl = dtDelta(mainDT(coll, oldMain), mainDT(coll, newMain)); if (dl){ const d = strip(p); d.sched = shiftSched(p.sched, dl); save('todos', p.id, d); } }
+}
+function openMainOf(p){
+  const m = getMain(p); if (!m) return;
+  if (p.prepFor.coll === 'events') openEvent(m); else if (m.sched) openTodoBlock(m); else openTaskForm(m.id);
+}
+function prepNotes(t){
+  const m = getMain(t), p = getPrep(t);
+  let h = '';
+  if (m) h += `<p class="sh-note prep-note">↳ <b>${esc(m.title)}</b> için hazırlık · ${esc(whenTxt(t.prepFor.coll, m))} <button class="btn small" data-openmain>Ana işi aç</button></p>`;
+  if (p) h += `<p class="sh-note prep-note">Hazırlık: <b>${esc(p.title)}</b> · ${esc(prepWhen(p))}${p.done ? ' · yapıldı' : ''}</p>`;
+  return h;
+}
+function bindPrepNotes(root, t){ const b = root.querySelector('[data-openmain]'); if (b) b.onclick = () => openMainOf(t); }
+function deleteWithPrep(coll, main, label, acc){
+  const p = getPrep(main);
+  if (!p){ remove(coll, main.id); closeSheet(); toast(label + ' silindi'); return; }
+  openSheet(`<div class="sh-head"><h3>Hazırlığı da silelim mi?</h3><button class="btn small ghost" data-close>Vazgeç</button></div>
+    <p class="sh-meta">"${esc(main.title)}" için bir hazırlık var: <b>${esc(p.title)}</b> · ${esc(prepWhen(p))}</p>
+    <div class="sh-actions"><button class="btn danger" id="dpBoth">İkisini de sil</button><button class="btn" id="dpOne">Sadece ${esc(acc)} sil</button></div>`, root => {
+    root.querySelector('#dpBoth').onclick = () => { remove(coll, main.id); remove('todos', p.id); closeSheet(); toast(label + ' ve hazırlığı silindi'); };
+    root.querySelector('#dpOne').onclick = () => { remove(coll, main.id); const d = strip(p); delete d.prepFor; save('todos', p.id, d); closeSheet(); toast(label + ' silindi, hazırlık listede duruyor'); };
+  });
+}
+function deletePrepTodo(t){
+  remove('todos', t.id);
+  const m = getMain(t); if (m){ const d = strip(m); delete d.prep; save(t.prepFor.coll, m.id, d); }
+  closeSheet(); toast('Hazırlık silindi');
+}
+function mountPrep(box, ctx){
+  const ex = ctx.existing;
+  const ps = ex ? {on:true, dirty:false, titleTouched:false, title:ex.title, mode:'', date: ex.sched ? ex.sched.date : (ex.due || ''), time: ex.sched ? ex.sched.start : '', dur: ex.dur || 60}
+               : {on:false, dirty:false, titleTouched:false, title:'', mode:'', date:'', time:'', dur:60};
+  const modes = m => [
+    {k:'before', l:'Hemen öncesinde', ok: !!(m.date && m.time)},
+    {k:'same', l:'Aynı gün · saatsiz', ok: !!m.date},
+    {k:'daybefore', l:'1 gün önce · saatsiz', ok: !!m.date},
+    {k:'custom', l:'Tarih / saat seç', ok: true}];
+  const compute = m => {
+    if (ps.mode === 'before') return (m.date && m.time) ? {sched: shiftSched({date:m.date, start:m.time}, -ps.dur), dur: ps.dur} : null;
+    if (ps.mode === 'same') return m.date ? {due: m.date} : null;
+    if (ps.mode === 'daybefore') return m.date ? {due: ymd(addDays(parseYmd(m.date), -1))} : null;
+    if (ps.mode === 'custom') return !ps.date ? null : ps.time ? {sched: {date: ps.date, start: ps.time}, dur: ps.dur} : {due: ps.date};
+    return null;
+  };
+  const preview = m => {
+    if (ex && !ps.dirty){
+      if (ex.sched && ctx.orig){ const dl = dtDelta(ctx.orig, m); if (dl) return {sched: shiftSched(ex.sched, dl), dur: ex.dur || 60, shifted: true}; }
+      return ex.sched ? {sched: ex.sched, dur: ex.dur || 60} : ex.due ? {due: ex.due} : null;
+    }
+    return compute(m);
+  };
+  const descr = r => r.sched ? `Takvime: <b>${esc(dayLabel(r.sched.date))} ${r.sched.start}–${fromMin(Math.min(toMin(r.sched.start) + r.dur, 1439))}</b>${r.shifted ? ' · ana işle birlikte kayacak' : ''}` : `<b>${esc(dayLabel(r.due))}</b> · saatsiz, o günün listesinde`;
+  const draw = () => {
+    const m = ctx.main();
+    if (!ps.on){
+      const html = `<button type="button" class="prep-add" id="ppAdd"${m.date ? '' : ' disabled'}>＋ Hazırlık ekle${m.date ? '' : '<small>Önce işe bir tarih ver</small>'}</button>`;
+      if (box._last === html) return;
+      box._last = html; box.innerHTML = html;
+      const b = box.querySelector('#ppAdd');
+      if (b) b.onclick = () => { const mm = ctx.main(); ps.on = true; ps.dirty = true; ps.mode = mm.time ? 'before' : 'same'; draw(); setTimeout(() => { try { box.querySelector('#ppTitle').focus(); } catch {} }, 40); };
+      return;
+    }
+    const ms = modes(m);
+    if (ps.dirty){ const cur = ms.find(x => x.k === ps.mode); if (!cur || !cur.ok) ps.mode = 'custom'; }
+    const r = preview(m);
+    const showDur = ps.dirty && (ps.mode === 'before' || (ps.mode === 'custom' && ps.time));
+    const html = `<div class="prep-card">
+      <div class="prep-h"><span>↳ Hazırlık</span><button type="button" class="btn small ghost" id="ppRm">Kaldır</button></div>
+      <input type="text" id="ppTitle" value="${esc(ps.title)}" placeholder="Hazırlık: ${esc(m.title || 'iş')}" aria-label="Hazırlığın adı">
+      <div class="chips wrap">${ms.map(x => `<button type="button" class="chip" data-pm="${x.k}" aria-pressed="${ps.dirty && ps.mode === x.k}"${x.ok ? '' : ' disabled'}>${x.l}</button>`).join('')}</div>
+      ${ps.dirty && ps.mode === 'custom' ? `<div class="prep-dt"><label>Tarih<input type="date" id="ppDate" value="${ps.date}"></label><label>Saat (isteğe bağlı)<input type="time" id="ppTime" value="${ps.time}"></label></div>` : ''}
+      ${showDur ? `<div class="fld"><span class="lbl">Ne kadar sürer?</span><div class="chips wrap">${[30,60,120,180].map(d => `<button type="button" class="chip" data-pd="${d}" aria-pressed="${ps.dur === d}">${durTxt(d)}</button>`).join('')}</div></div>` : ''}
+      <p class="prep-where">${r ? descr(r) : (ps.mode === 'custom' ? 'Hazırlık için bir tarih seç.' : 'Bir zaman seç.')}</p>
+    </div>`;
+    if (box._last === html) return;
+    box._last = html; box.innerHTML = html;
+    box.querySelector('#ppRm').onclick = () => { ps.on = false; ps.dirty = true; draw(); };
+    box.querySelector('#ppTitle').oninput = e => { ps.title = e.target.value; ps.titleTouched = true; };
+    box.querySelectorAll('[data-pm]').forEach(b => b.onclick = () => {
+      const m = ctx.main(), r = preview(m);
+      if (b.dataset.pm === 'custom' && !ps.dirty && r){ ps.date = r.sched ? r.sched.date : r.due; ps.time = r.sched ? r.sched.start : ''; ps.dur = r.dur || ps.dur; }
+      else if (b.dataset.pm === 'custom' && !ps.date){ ps.date = m.date || todayStr(); }
+      ps.dirty = true; ps.mode = b.dataset.pm; draw();
+    });
+    const dI = box.querySelector('#ppDate'), tI = box.querySelector('#ppTime');
+    if (dI) dI.onchange = () => { ps.date = dI.value; draw(); };
+    if (tI) tI.onchange = () => { ps.time = tI.value; draw(); };
+    box.querySelectorAll('[data-pd]').forEach(b => b.onclick = () => { ps.dur = +b.dataset.pd; draw(); });
+  };
+  draw();
+  return {
+    refresh: draw,
+    title(){ const i = box.querySelector('#ppTitle'); if (i) i.placeholder = 'Hazırlık: ' + (ctx.main().title || 'iş'); },
+    error(m){
+      if (!ps.on || (ex && !ps.dirty)) return null;
+      if (!compute(m)) return ps.mode === 'custom' ? 'Hazırlık için bir tarih seç.' : 'Hazırlık için işe bir tarih ver.';
+      return null;
+    },
+    apply(coll, mainId, newMain, oldMain){
+      const m = mainDT(coll, newMain);
+      if (!ps.on){ if (ex) remove('todos', ex.id); delete newMain.prep; return; }
+      let d, pid;
+      if (ex && !ps.dirty){
+        d = strip(ex); pid = ex.id;
+        if (ex.sched && ctx.orig){ const dl = dtDelta(ctx.orig, m); if (dl) d.sched = shiftSched(ex.sched, dl); }
+      } else {
+        const r = compute(m); if (!r) return;
+        d = ex ? strip(ex) : {done:false, created:Date.now()}; pid = ex ? ex.id : uid();
+        delete d.sched; delete d.due; delete d.dur; Object.assign(d, r);
+      }
+      let title = ps.title.trim();
+      if (!ps.titleTouched && ex && oldMain && ex.title === 'Hazırlık: ' + oldMain.title) title = '';
+      d.title = title || ('Hazırlık: ' + newMain.title);
+      d.cat = newMain.cat; d.prepFor = {coll, id: mainId};
+      save('todos', pid, d); newMain.prep = pid;
+    }
+  };
 }
 function slotsOn(ds, dur, excludeId){
   const busy = itemsForDate(ds).filter(x => !(x.kind==='todo' && (x.done || x.id===excludeId))).map(x => [toMin(x.start), toMin(x.end)]).sort((a,b) => a[0]-b[0]);
@@ -1040,7 +1204,9 @@ function openTaskForm(id, preset){
   };
   if (preset){ if ('date' in preset) st.date = preset.date; if ('time' in preset){ st.time = preset.time; if (!preset.time) st.end = ''; } }
   const catChips = () => S.cats.map(c => `<button type="button" class="chip" data-cat="${esc(c.id)}" style="--cc:var(--${c.color})" aria-pressed="${st.cat===c.id}"><i class="dot"></i>${esc(c.name)}</button>`).join('');
-  openSheet(`${headHtml(isNew ? 'Yeni iş' : 'İşi düzenle', st.cat)}
+  const isPrep = !!(t && t.prepFor && getMain(t));
+  openSheet(`${headHtml(isNew ? 'Yeni iş' : isPrep ? 'Hazırlığı düzenle' : 'İşi düzenle', st.cat)}
+    ${isPrep ? prepNotes(t) : ''}
     <div class="form">
       <label class="full">Ne yapılacak?<input type="text" id="tkTitle" value="${esc(t ? t.title : '')}" placeholder="Örn. MATH201 ödev 2" enterkeyhint="done"></label>
       <div class="full fld"><span class="lbl">Kategori</span><div class="chips wrap" id="tkCats">${catChips()}</div></div>
@@ -1056,9 +1222,12 @@ function openTaskForm(id, preset){
       </div>
       <div class="full" id="tkConf"></div>
       <p class="full where" id="tkWhere"></p>
+      ${isPrep ? '' : '<div class="full" id="tkPrep"></div>'}
     </div>
     <div class="sh-actions"><button class="btn primary" id="tkSave">${isNew ? 'Ekle' : 'Kaydet'}</button>${isNew ? '' : '<button class="btn danger" id="tkDel">Sil</button>'}</div>`, root => {
     const q = sel => root.querySelector(sel);
+    if (isPrep) bindPrepNotes(root, t);
+    let pp = null;
     const sync = () => {
       st.date = q('#tkDate').value; st.time = q('#tkTime').value;
       if (st.time && !q('#tkEnd').value) q('#tkEnd').value = fromMin(Math.min(toMin(st.time)+60, 23*60+59));
@@ -1090,6 +1259,7 @@ function openTaskForm(id, preset){
       else if (st.date) w.innerHTML = `<b>${esc(dayLabel(st.date))}</b> gününe, saatsiz olarak eklenecek. Takvimde o günün "gün içinde" satırında görünür.`;
       else if (st.time) w.innerHTML = 'Saat için bir tarih de seç.';
       else w.innerHTML = '<b>Tarihsiz</b> olarak eklenecek.';
+      if (pp) pp.refresh();
     };
     root.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { st.cat = b.dataset.cat; sync(); });
     root.querySelectorAll('[data-find]').forEach(b => b.onclick = () => { st.find = +b.dataset.find; sync(); });
@@ -1099,6 +1269,8 @@ function openTaskForm(id, preset){
       sync();
     });
     q('#tkDate').onchange = sync; q('#tkTime').onchange = sync; q('#tkEnd').onchange = sync;
+    if (!isPrep) pp = mountPrep(q('#tkPrep'), {existing: t ? getPrep(t) : null, orig: t ? mainDT('todos', t) : null, main: () => ({title: q('#tkTitle').value.trim(), date: st.date, time: st.time})});
+    q('#tkTitle').addEventListener('input', () => { if (pp) pp.title(); });
     sync();
     if (isNew) setTimeout(() => { try { q('#tkTitle').focus(); } catch {} }, 60);
     const submit = () => {
@@ -1106,19 +1278,22 @@ function openTaskForm(id, preset){
       sync();
       if (st.time && !st.date) return toast('Saat için bir tarih seç.');
       if (st.time && !(st.end && toMin(st.end) > toMin(st.time))) return toast('Bitiş saati başlangıçtan sonra olmalı.');
+      const perr = pp && pp.error({date: st.date, time: st.time}); if (perr) return toast(perr);
       const d = isNew ? {done:false, created:Date.now()} : strip(t);
       d.title = title; d.cat = st.cat;
       delete d.sched; delete d.due; delete d.dur;
       const cx = (st.cancel && st.date && st.time) ? fixedConflicts(st.date, st.time, st.end) : [];
       if (st.date && st.time){ d.sched = {date:st.date, start:st.time}; d.dur = toMin(st.end) - toMin(st.time); }
       else if (st.date) d.due = st.date;
-      save('todos', isNew ? uid() : t.id, d); closeSheet();
+      const mainId = isNew ? uid() : t.id;
+      if (pp) pp.apply('todos', mainId, d, t);
+      save('todos', mainId, d); closeSheet();
       if (cx.length) cancelFixed(cx);
       toast((d.sched ? `${dayLabel(d.sched.date)} ${d.sched.start}–${st.end} eklendi` : d.due ? `${dayLabel(d.due)} gününe eklendi` : 'Tarihsiz olarak eklendi') + (cx.length ? ` · ${cx.length} ders iptal` : ''));
     };
     q('#tkSave').onclick = submit;
     q('#tkTitle').onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); submit(); } };
-    const del = q('#tkDel'); if (del) armed(del, () => { remove('todos', t.id); closeSheet(); toast('İş silindi'); });
+    const del = q('#tkDel'); if (del) armed(del, () => { if (isPrep) deletePrepTodo(t); else deleteWithPrep('todos', t, 'İş', 'işi'); });
   });
 }
 
