@@ -39,10 +39,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp android/app/build/outputs/apk/release/app-release.apk zams-widget.apk
+          VER=$(grep -oP 'versionName "\K[^"]+' android/app/build.gradle)
           gh release delete widget --yes --cleanup-tag || true
           gh release create widget zams-widget.apk \
-            --title "Zam's Widget" \
-            --notes "Telefondan indir: zams-widget.apk. Derleme ${{ github.run_number }}." \
+            --title "Zam's Widget $VER" \
+            --notes "Zam's Widget $VER. Telefondan indir: zams-widget.apk (derleme ${{ github.run_number }})." \
             --target "${{ github.sha }}"
 
       - name: Publish build log

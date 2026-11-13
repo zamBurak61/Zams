@@ -152,6 +152,7 @@ textarea{width:100%;min-height:70px;resize:vertical}
 .chip:disabled{opacity:.4;cursor:not-allowed}
 .prep-note{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
 .prep-tag{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.app-ver{margin:22px 0 4px;text-align:center;font-size:12px;color:var(--muted);font-family:var(--f-mono)}
 details.done-group summary{cursor:pointer;list-style:none}
 details.done-group summary::-webkit-details-marker{display:none}
 
@@ -359,6 +360,7 @@ const MONTHS = ['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağu
 const MSHORT = ['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
 const CAMPUS = {G:{s:'↓',n:'Güney'},K:{s:'↑',n:'Kuzey'},H:{s:'–',n:'Hisar'}};
 const COLORS = ['c1','c2','c3','c4','c5','c6','c7','c8'];
+const APP_VERSION = '1.2.0';
 const DURS = [15,30,45,60,90,120,180,240];
 const H0 = 8, H1 = 22;
 
@@ -1308,7 +1310,8 @@ function openSettings(){
     <div class="sh-actions"><button class="btn primary" id="tplAdd">Sabit ekle</button></div>
     <div class="sh-sec">Hesap</div>
     <p class="muted" style="margin:0 0 8px">${esc(USER && USER.email || '')}</p>
-    <div class="sh-actions"><button class="btn" id="btnOut">Çıkış yap</button></div>`, root => {
+    <div class="sh-actions"><button class="btn" id="btnOut">Çıkış yap</button></div>
+    <p class="app-ver">Zam's ${APP_VERSION}</p>`, root => {
     root.querySelectorAll('.row-ed').forEach(row => {
       const id = row.dataset.cid, c = () => S.cats.find(x => x.id === id);
       row.querySelector('[data-col]').onclick = e => { const cat = c(); if (!cat) return; cat.color = COLORS[(COLORS.indexOf(cat.color)+1)%COLORS.length]; e.currentTarget.style.setProperty('--cc', `var(--${cat.color})`); saveCats(); };
